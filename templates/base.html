@@ -1,0 +1,35 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <meta name="title" content="Escucha Bolivia - Tu Guía de Radios en Línea">
+    <meta name="description"
+        content="Descubre y disfruta de las mejores radios de Bolivia en un solo lugar. Escucha tus estaciones favoritas en línea, conoce los rankings y mantente al día con la música y noticias que amas. ¡Sintoniza ahora!">
+    <meta name="keywords"
+        content="radios Bolivia, escuchar radios en línea, estaciones de radio, música boliviana, ranking de radios, noticias Bolivia, radios online">
+    <meta name="robots" content="index, follow">
+    <meta name="author" content="elitteradio">
+
+
+    <title>Escucha Bolivia</title>
+
+    <link rel="stylesheet" href="{% static 'core/css/index.css' %}">
+    <script src="{% static 'core/js/htmx2.0.8.js' %}" defer></script>
+    <script src="{% static 'core/js/alpine3.15.2.js' %}" defer></script>
+
+    {% block head %}{% endblock %}
+</head>
+
+<body>
+
+    {% block content %}{% endblock %}
+
+    {% block scripts %}{% endblock %}
+
+</body>
+
+</html>
