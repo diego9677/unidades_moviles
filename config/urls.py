@@ -21,4 +21,5 @@ from core import views
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('', views.index, name='index'),
+    path('api/manage-client/', views.manage_client, name='manage_client'),
 ]
