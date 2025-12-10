@@ -21,10 +21,25 @@
     <script src="{% static 'core/js/htmx2.0.8.js' %}" defer></script>
     <script src="{% static 'core/js/alpine3.15.2.js' %}" defer></script>
 
+    <style>
+      #global-indicator { display: none; }
+      #global-indicator.htmx-request { display: flex; }
+    </style>
+
     {% block head %}{% endblock %}
 </head>
 
 <body>
+
+    <div id="global-indicator" class="fixed inset-0 bg-black/40 z-50 items-center justify-center">
+        <div class="bg-white text-gray-700 px-4 py-3 rounded shadow flex items-center space-x-3">
+            <svg class="animate-spin h-5 w-5 text-indigo-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+            </svg>
+            <span>Cargando…</span>
+        </div>
+    </div>
 
     {% block content %}{% endblock %}
 

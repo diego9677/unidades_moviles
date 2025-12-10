@@ -28,37 +28,37 @@
             <div class="space-y-4 p-4 border rounded">
                 <h2 class="text-xl font-semibold">Acciones</h2>
 
-                <form method="post" hx-post="{% url 'manage_client' %}" hx-target="#result" hx-swap="innerHTML" hx-include="#client,#in_port,#ports">
+                <form method="post" hx-post="{% url 'manage_client' %}" hx-target="#result" hx-swap="innerHTML" hx-include="#client,#in_port,#ports" hx-indicator="#global-indicator">
                     {% csrf_token %}
                     <input type="hidden" name="action" value="create">
                     <button type="submit" class="w-full bg-green-600 text-white px-4 py-2 rounded">Crear cliente</button>
                 </form>
 
-                <form method="post" hx-post="{% url 'manage_client' %}" hx-target="#result" hx-swap="innerHTML" hx-include="#client">
+                <form method="post" hx-post="{% url 'manage_client' %}" hx-target="#result" hx-swap="innerHTML" hx-include="#client" hx-indicator="#global-indicator">
                     {% csrf_token %}
                     <input type="hidden" name="action" value="delete">
                     <button type="submit" class="w-full bg-red-600 text-white px-4 py-2 rounded">Eliminar cliente</button>
                 </form>
 
-                <form method="post" hx-post="{% url 'manage_client' %}" hx-target="#result" hx-swap="innerHTML" hx-include="#client">
+                <form method="post" hx-post="{% url 'manage_client' %}" hx-target="#result" hx-swap="innerHTML" hx-include="#client" hx-indicator="#global-indicator">
                     {% csrf_token %}
                     <input type="hidden" name="action" value="stop">
                     <button type="submit" class="w-full bg-yellow-600 text-white px-4 py-2 rounded">Detener cliente</button>
                 </form>
 
-                <form method="post" hx-post="{% url 'manage_client' %}" hx-target="#result" hx-swap="innerHTML" hx-include="#client">
+                <form method="post" hx-post="{% url 'manage_client' %}" hx-target="#result" hx-swap="innerHTML" hx-include="#client" hx-indicator="#global-indicator">
                     {% csrf_token %}
                     <input type="hidden" name="action" value="restart">
                     <button type="submit" class="w-full bg-blue-600 text-white px-4 py-2 rounded">Reiniciar cliente</button>
                 </form>
 
-                <form method="post" hx-post="{% url 'manage_client' %}" hx-target="#result" hx-swap="innerHTML" hx-include="#client,#port">
+                <form method="post" hx-post="{% url 'manage_client' %}" hx-target="#result" hx-swap="innerHTML" hx-include="#client,#port" hx-indicator="#global-indicator">
                     {% csrf_token %}
                     <input type="hidden" name="action" value="restart-port">
                     <button type="submit" class="w-full bg-indigo-600 text-white px-4 py-2 rounded">Reiniciar puerto específico</button>
                 </form>
 
-                <form method="post" hx-post="{% url 'manage_client' %}" hx-target="#result" hx-swap="innerHTML" hx-include="#client,#ports">
+                <form method="post" hx-post="{% url 'manage_client' %}" hx-target="#result" hx-swap="innerHTML" hx-include="#client,#ports" hx-indicator="#global-indicator">
                     {% csrf_token %}
                     <input type="hidden" name="action" value="extend">
                     <button type="submit" class="w-full bg-purple-600 text-white px-4 py-2 rounded">Agregar puertos</button>
@@ -68,7 +68,7 @@
 
         <div class="p-4 border rounded">
             <h2 class="text-xl font-semibold">Resultado</h2>
-            <pre id="result" class="mt-2 bg-black text-green-400 p-3 rounded overflow-auto text-sm"></pre>
+            <div id="result" class="mt-2 bg-gray-50 text-gray-800 p-3 rounded overflow-auto text-sm"></div>
         </div>
     </div>
 {% endblock %}
