@@ -1,0 +1,65 @@
+{% extends 'index.html' %}
+
+{% block title %}
+    {% if object %}Editar{% else %}Crear{% endif %} Cliente | Unidades Móviles
+{% endblock %}
+
+{% block main_content %}
+<div class="container mx-auto px-4 py-8">
+    <div class="max-w-md mx-auto bg-white shadow rounded-lg p-6">
+        <h1 class="text-2xl font-bold mb-6">
+            {% if object %}Editar{% else %}Crear{% endif %} Cliente
+        </h1>
+
+        {% if messages %}
+        <div class="mb-4">
+            {% for message in messages %}
+            <div class="p-3 rounded text-sm mb-2 {% if message.tags == 'error' %}bg-red-100 text-red-700{% else %}bg-green-100 text-green-700{% endif %}">
+                {{ message }}
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <form method="post">
+            {% csrf_token %}
+            
+            {% for field in form %}
+            <div class="mb-4">
+                <label for="{{ field.id_for_label }}" class="block text-gray-700 text-sm font-bold mb-2">
+                    {{ field.label }}
+                </label>
+                <!-- Render field manually or use widget tweaks -->
+                {% if field.field.widget.input_type == 'checkbox' %}
+                    {{ field }}
+                {% else %}
+                    <input type="{{ field.field.widget.input_type|default:'text' }}" 
+                           name="{{ field.name }}" 
+                           id="{{ field.id_for_label }}" 
+                           value="{{ field.value|default_if_none:'' }}"
+                           class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline {% if field.errors %}border-red-500{% endif %}">
+                {% endif %}
+                
+                {% if field.help_text %}
+                <p class="text-gray-500 text-xs mt-1">{{ field.help_text }}</p>
+                {% endif %}
+                {% if field.errors %}
+                <div class="text-red-500 text-xs mt-1">
+                    {{ field.errors|striptags }}
+                </div>
+                {% endif %}
+            </div>
+            {% endfor %}
+
+            <div class="flex items-center justify-between mt-6">
+                <a href="{% url 'client_list' %}" class="text-gray-600 hover:text-gray-800">
+                    Cancelar
+                </a>
+                <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+                    Guardar
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

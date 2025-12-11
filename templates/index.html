@@ -1,74 +1,47 @@
-{% extends 'base.html' %}
+{% extends "base.html" %}
 
 {% block content %}
-    <div class="container mx-auto p-4 space-y-6">
-        <h1 class="text-2xl font-bold text-gray-800">Gestión de Unidades Móviles (SRT)</h1>
+<div class="min-h-screen flex">
 
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div class="space-y-4 p-4 border rounded">
-                <h2 class="text-xl font-semibold">Parámetros</h2>
-                <div class="space-y-2">
-                    <label class="block text-sm">Cliente</label>
-                    <input id="client" name="client" type="text" value="lacafeteria" class="w-full border px-3 py-2 rounded">
-                </div>
-                <div class="space-y-2">
-                    <label class="block text-sm">Puerto principal (create)</label>
-                    <input id="in_port" name="in_port" type="number" value="8901" class="w-full border px-3 py-2 rounded">
-                </div>
-                <div class="space-y-2">
-                    <label class="block text-sm">Puertos extra (espacio separados)</label>
-                    <input id="ports" name="ports" type="text" value="1940 1941 1942" class="w-full border px-3 py-2 rounded">
-                </div>
-                <div class="space-y-2">
-                    <label class="block text-sm">Puerto específico (restart-port)</label>
-                    <input id="port" name="port" type="number" value="1940" class="w-full border px-3 py-2 rounded">
-                </div>
+    <!-- SIDEBAR -->
+    <aside class="w-64 bg-gray-800 text-white p-5 space-y-6">
+        <h2 class="text-2xl font-bold">Panel SRT</h2>
+
+        <nav class="space-y-3">
+
+            <a href="{% url 'home' %}"
+               class="block px-3 py-2 rounded hover:bg-gray-700">
+                Inicio
+            </a>
+
+            <a href="{% url 'client_list' %}"
+               class="block px-3 py-2 rounded hover:bg-gray-700">
+                Gestión de clientes
+            </a>
+
+        </nav>
+
+        {% block sidebar_extra %}
+        {# Espacio opcional para enlaces adicionales o widgets #}
+        {% endblock %}
+
+    </aside>
+
+    <!-- CONTENIDO PRINCIPAL -->
+    <main class="flex-1 p-6 bg-gray-100">
+
+        {% block content_title %}
+            {# Puedes sobrescribir el título de cada página #}
+        {% endblock %}
+
+        {% block main_content %}
+            <div class="bg-white p-6 rounded shadow">
+                <h3 class="text-xl font-bold mb-4">Bienvenido al Panel de Control</h3>
+                <p>Selecciona una opción del menú para comenzar.</p>
             </div>
+        {% endblock %}
 
-            <div class="space-y-4 p-4 border rounded">
-                <h2 class="text-xl font-semibold">Acciones</h2>
+    </main>
 
-                <form method="post" hx-post="{% url 'manage_client' %}" hx-target="#result" hx-swap="innerHTML" hx-include="#client,#in_port,#ports" hx-indicator="#global-indicator">
-                    {% csrf_token %}
-                    <input type="hidden" name="action" value="create">
-                    <button type="submit" class="w-full bg-green-600 text-white px-4 py-2 rounded">Crear cliente</button>
-                </form>
-
-                <form method="post" hx-post="{% url 'manage_client' %}" hx-target="#result" hx-swap="innerHTML" hx-include="#client" hx-indicator="#global-indicator">
-                    {% csrf_token %}
-                    <input type="hidden" name="action" value="delete">
-                    <button type="submit" class="w-full bg-red-600 text-white px-4 py-2 rounded">Eliminar cliente</button>
-                </form>
-
-                <form method="post" hx-post="{% url 'manage_client' %}" hx-target="#result" hx-swap="innerHTML" hx-include="#client" hx-indicator="#global-indicator">
-                    {% csrf_token %}
-                    <input type="hidden" name="action" value="stop">
-                    <button type="submit" class="w-full bg-yellow-600 text-white px-4 py-2 rounded">Detener cliente</button>
-                </form>
-
-                <form method="post" hx-post="{% url 'manage_client' %}" hx-target="#result" hx-swap="innerHTML" hx-include="#client" hx-indicator="#global-indicator">
-                    {% csrf_token %}
-                    <input type="hidden" name="action" value="restart">
-                    <button type="submit" class="w-full bg-blue-600 text-white px-4 py-2 rounded">Reiniciar cliente</button>
-                </form>
-
-                <form method="post" hx-post="{% url 'manage_client' %}" hx-target="#result" hx-swap="innerHTML" hx-include="#client,#port" hx-indicator="#global-indicator">
-                    {% csrf_token %}
-                    <input type="hidden" name="action" value="restart-port">
-                    <button type="submit" class="w-full bg-indigo-600 text-white px-4 py-2 rounded">Reiniciar puerto específico</button>
-                </form>
-
-                <form method="post" hx-post="{% url 'manage_client' %}" hx-target="#result" hx-swap="innerHTML" hx-include="#client,#ports" hx-indicator="#global-indicator">
-                    {% csrf_token %}
-                    <input type="hidden" name="action" value="extend">
-                    <button type="submit" class="w-full bg-purple-600 text-white px-4 py-2 rounded">Agregar puertos</button>
-                </form>
-            </div>
-        </div>
-
-        <div class="p-4 border rounded">
-            <h2 class="text-xl font-semibold">Resultado</h2>
-            <div id="result" class="mt-2 bg-gray-50 text-gray-800 p-3 rounded overflow-auto text-sm"></div>
-        </div>
-    </div>
+</div>
 {% endblock %}

@@ -24,7 +24,7 @@ class ClientAPIService:
     def __init__(self, api_key: str = None):
         self.base_url = "https://srv4.elittehosting.com"
         self.api_prefix = "/api/clients"
-        self.api_key = "4dc3817812279d80dba2120f0675eb89ee299013dc8f9d8794ddebce2c1caab8"
+        self.api_key = "0ea740c63299b9a39a647e21b91e34b1722c7b1a9403ec00432ab4e8aeb463c0"
 
         if not self.api_key:
             raise ValueError("API Key es requerida. Proporciona una API key o configura CLIENT_API_KEY en settings.")
@@ -32,9 +32,10 @@ class ClientAPIService:
     def _get_headers(self) -> Dict[str, str]:
         """Retorna los headers necesarios para las peticiones"""
         return {
-            'Authorization': f'Bearer {self.api_key}',
+            'X-API-Key': self.api_key,
             'Content-Type': 'application/json',
-            'Accept': 'application/json'
+            'Accept': 'application/json',
+            'User-Agent': 'UnitMobileClient/1.0'
         }
 
     def _make_request(self, method: str, endpoint: str, data: dict = None, params: dict = None) -> Dict[str, Any]:
@@ -43,7 +44,7 @@ class ClientAPIService:
 
         Args:
             method: Método HTTP (GET, POST, PUT, DELETE, etc.)
-            endpoint: Endpoint de la API (sin el prefijo /api/clients)
+            endpoint: Endpoint de la API (relativo al prefijo)
             data: Datos para el body de la petición
             params: Parámetros de query string
 
@@ -53,7 +54,8 @@ class ClientAPIService:
         Raises:
             APIException: En caso de errores en la petición
         """
-        url = f"{self.base_url}{endpoint}"
+        # Construir URL completa concatenando base + prefix + endpoint
+        url = f"{self.base_url}{self.api_prefix}{endpoint}"
         headers = self._get_headers()
 
         try:
@@ -114,6 +116,8 @@ class ClientAPIService:
         Returns:
             dict: Estado de la API
         """
+        # Se asume que el health check está en la raíz del prefijo o en /health?
+        # Si api_prefix es /api/clients, "/" -> /api/clients/
         return self._make_request("GET", "/")
 
     # ============================
@@ -135,7 +139,8 @@ class ClientAPIService:
             "client": client_name,
             "ports": ports
         }
-        return self._make_request("POST", "/clients", data=data)
+        # Endpoint relativo: /create -> /api/clients/create
+        return self._make_request("POST", "/create", data=data)
 
     def delete_client(self, client_name: str) -> Dict[str, Any]:
         """
@@ -147,7 +152,8 @@ class ClientAPIService:
         Returns:
             dict: Respuesta de la API
         """
-        endpoint = f"/clients/{client_name}"
+        # Endpoint relativo: /nombre -> /api/clients/nombre
+        endpoint = f"/{client_name}"
         return self._make_request("DELETE", endpoint)
 
     def extend_client(self, client_name: str, ports: List[int]) -> Dict[str, Any]:
@@ -162,7 +168,7 @@ class ClientAPIService:
             dict: Respuesta de la API
         """
         data = {"ports": ports}
-        endpoint = f"/clients/{client_name}/extend"
+        endpoint = f"/{client_name}/extend"
         return self._make_request("POST", endpoint, data=data)
 
     # ============================
@@ -179,7 +185,7 @@ class ClientAPIService:
         Returns:
             dict: Respuesta de la API
         """
-        endpoint = f"/clients/{client_name}/restart"
+        endpoint = f"/{client_name}/restart"
         return self._make_request("POST", endpoint)
 
     def stop_client(self, client_name: str) -> Dict[str, Any]:
@@ -192,7 +198,7 @@ class ClientAPIService:
         Returns:
             dict: Respuesta de la API
         """
-        endpoint = f"/clients/{client_name}/stop"
+        endpoint = f"/{client_name}/stop"
         return self._make_request("POST", endpoint)
 
     def start_client(self, client_name: str) -> Dict[str, Any]:
@@ -205,7 +211,7 @@ class ClientAPIService:
         Returns:
             dict: Respuesta de la API
         """
-        endpoint = f"/clients/{client_name}/start"
+        endpoint = f"/{client_name}/start"
         return self._make_request("POST", endpoint)
 
     def restart_port(self, client_name: str, port: int) -> Dict[str, Any]:
@@ -219,7 +225,8 @@ class ClientAPIService:
         Returns:
             dict: Respuesta de la API
         """
-        endpoint = f"/clients/{client_name}/ports/{port}/restart"
+        # Endpoint según captura: /clients/nombre/restart-port/puerto
+        endpoint = f"/{client_name}/restart-port/{port}"
         return self._make_request("POST", endpoint)
 
 

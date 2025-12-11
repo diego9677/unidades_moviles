@@ -15,7 +15,9 @@
     <meta name="author" content="elitteradio">
 
 
-    <title>Escucha Bolivia</title>
+    <title>
+        {% block title %}{% endblock %}
+    </title>
 
     <link rel="stylesheet" href="{% static 'core/css/index.css' %}">
     <script src="{% static 'core/js/htmx2.0.8.js' %}" defer></script>
