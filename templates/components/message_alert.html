@@ -1,0 +1,14 @@
+{# Componente de alerta de mensajes reutilizable #}
+{# Uso: {% include 'components/message_alert.html' with message=message %} #}
+{# El objeto message debe tener .tags y el contenido del mensaje #}
+
+<div class="p-4 rounded-lg shadow-sm border-l-4 flex items-center {% if message.tags == 'error' %}bg-red-50 text-red-700 border-red-500{% elif message.tags == 'warning' %}bg-yellow-50 text-yellow-700 border-yellow-500{% else %}bg-green-50 text-green-700 border-green-500{% endif %}">
+    {% if message.tags == 'error' %}
+        {% include 'icons/alert_circle_icon.html' with size="20" class="mr-3 flex-shrink-0" %}
+    {% elif message.tags == 'warning' %}
+        {% include 'icons/warning_icon.html' with size="20" class="mr-3 flex-shrink-0" %}
+    {% else %}
+        {% include 'icons/check_icon.html' with size="20" class="mr-3 flex-shrink-0" %}
+    {% endif %}
+    <span>{{ message }}</span>
+</div>

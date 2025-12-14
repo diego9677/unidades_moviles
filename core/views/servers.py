@@ -5,34 +5,38 @@ from django.contrib import messages
 from core.models import Server
 from core.forms import ServerForm
 
+
 class ServerListView(ListView):
     model = Server
     template_name = 'core/server_list.html'
     context_object_name = 'servers'
-    
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         return context
+
 
 class ServerCreateView(CreateView):
     model = Server
     form_class = ServerForm
     template_name = 'core/server_form.html'
     success_url = reverse_lazy('server_list')
-    
+
     def form_valid(self, form):
         messages.success(self.request, "Servidor agregado exitosamente.")
         return super().form_valid(form)
+
 
 class ServerUpdateView(UpdateView):
     model = Server
     form_class = ServerForm
     template_name = 'core/server_form.html'
     success_url = reverse_lazy('server_list')
-    
+
     def form_valid(self, form):
         messages.success(self.request, "Servidor actualizado.")
         return super().form_valid(form)
+
 
 class ServerDeleteView(DeleteView):
     model = Server

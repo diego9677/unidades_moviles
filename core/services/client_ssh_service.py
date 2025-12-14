@@ -4,9 +4,11 @@ from typing import List, Dict, Any
 
 logger = logging.getLogger(__name__)
 
+
 class SSHException(Exception):
     """Excepción para errores de SSH"""
     pass
+
 
 class ClientSSHService:
     """
@@ -17,10 +19,10 @@ class ClientSSHService:
     def __init__(self, server):
         self.server = server
         self.host = server.host
-        self.port = getattr(server, 'ssh_port', 22) # Default to 22 if not in model yet, but I added it
+        self.port = getattr(server, 'ssh_port', 22)  # Default to 22 if not in model yet, but I added it
         self.user = server.username
         self.password = server.password
-        self.key_path = None # Could add this to model later
+        self.key_path = None  # Could add this to model later
         self.command_path = "/usr/local/bin/manage_client"
 
     def _get_connection(self):
@@ -28,7 +30,7 @@ class ClientSSHService:
         try:
             client = paramiko.SSHClient()
             client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-            
+
             connect_kwargs = {
                 'hostname': self.host,
                 'port': self.port,
@@ -64,7 +66,7 @@ class ClientSSHService:
         try:
             client = self._get_connection()
             stdin, stdout, stderr = client.exec_command(full_command)
-            
+
             exit_status = stdout.channel.recv_exit_status()
             output = stdout.read().decode().strip()
             error = stderr.read().decode().strip()
@@ -79,10 +81,10 @@ class ClientSSHService:
             # Log para debug (temporal)
             print(f"DEBUG SSH SUCCESS: Command '{full_command}' returned status 0")
             print(f"Remote Output: {output}")
-            
+
             logger.info(f"Resultado SSH: {output}")
             return {
-                "status": "success", 
+                "status": "success",
                 "message": output,
                 "data": {"output": output}
             }
@@ -153,5 +155,7 @@ class ClientSSHService:
 
 # Instancia global para uso fácil
 # Instancia factory
+
+
 def get_ssh_service(server) -> ClientSSHService:
     return ClientSSHService(server)

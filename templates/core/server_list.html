@@ -7,7 +7,7 @@
     <div class="flex justify-between items-center mb-6">
         <h1 class="text-2xl font-bold text-gray-800">Gestión de Servidores</h1>
         <a href="{% url 'server_add' %}" class="btn-primary w-auto px-4 py-2 shadow-sm">
-            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+            {% include 'icons/plus_icon.html' with size="20" class="mr-2" %}
             Nuevo Servidor
         </a>
     </div>
@@ -15,14 +15,12 @@
     {% if messages %}
     <div class="mb-6 space-y-2">
         {% for message in messages %}
-        <div class="p-4 rounded-lg shadow-sm border-l-4 flex items-center {% if message.tags == 'error' %}bg-red-50 text-red-700 border-red-500{% else %}bg-green-50 text-green-700 border-green-500{% endif %}">
-            {{ message }}
-        </div>
+            {% include 'components/message_alert.html' with message=message %}
         {% endfor %}
     </div>
     {% endif %}
 
-    <div class="bg-white shadow-xl rounded-xl overflow-hidden border border-slate-100">
+    <div class="table-container">
         <table class="min-w-full divide-y divide-gray-200">
             <thead class="bg-slate-50">
                 <tr>
@@ -58,17 +56,19 @@
                     </td>
                     <td class="px-6 py-4 text-right text-sm font-medium">
                         <div class="flex justify-end space-x-3">
-                            <a href="{% url 'server_edit' server.pk %}" class="text-indigo-600 hover:text-indigo-900 flex items-center">Editar</a>
-                            <a href="{% url 'server_delete' server.pk %}" class="text-red-600 hover:text-red-900 flex items-center">Eliminar</a>
+                            <a href="{% url 'server_edit' server.pk %}" class="text-indigo-600 hover:text-indigo-900 flex items-center">
+                                {% include 'icons/edit_icon.html' with size="16" class="mr-1" %}
+                                Editar
+                            </a>
+                            <a href="{% url 'server_delete' server.pk %}" class="text-red-600 hover:text-red-900 flex items-center">
+                                {% include 'icons/delete_icon.html' with size="16" class="mr-1" %}
+                                Eliminar
+                            </a>
                         </div>
                     </td>
                 </tr>
                 {% empty %}
-                <tr>
-                    <td colspan="5" class="px-6 py-12 text-center text-gray-500">
-                        No hay servidores registrados.
-                    </td>
-                </tr>
+                    {% include 'components/empty_state.html' with title='No hay servidores registrados.' colspan=5 %}
                 {% endfor %}
             </tbody>
         </table>

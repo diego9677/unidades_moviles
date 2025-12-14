@@ -58,4 +58,26 @@
     @apply flex items-center justify-center px-2 rounded-md
            hover:ring-1 hover:ring-gray-200 transition-all outline-none;
   }
+
+  /* === Clases de estandarización === */
+  
+  /* Altura estándar para inputs de formulario */
+  .input-height {
+    @apply h-10;
+  }
+
+  /* Padding estándar para botones de formulario */
+  .btn-padding {
+    @apply px-6 py-2.5;
+  }
+
+  /* Contenedor de formulario estándar */
+  .form-container {
+    @apply max-w-2xl mx-auto bg-white shadow-xl rounded-xl overflow-hidden border border-slate-100 p-8;
+  }
+
+  /* Contenedor de tabla estándar */
+  .table-container {
+    @apply bg-white shadow-xl rounded-xl overflow-hidden border border-slate-100;
+  }
 }

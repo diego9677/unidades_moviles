@@ -1,0 +1,16 @@
+{# Componente de estado vacío reutilizable #}
+{# Uso: {% include 'components/empty_state.html' with icon='users_icon.html' title='No hay registros' description='Comienza creando uno nuevo' colspan=4 %} #}
+
+<tr>
+    <td colspan="{{ colspan|default:4 }}" class="px-6 py-12 text-center text-gray-500">
+        <div class="flex flex-col items-center">
+            {% if icon %}
+                {% include icon with size="48" class="text-gray-300 mb-3" %}
+            {% endif %}
+            <span class="text-lg">{{ title|default:"No hay registros disponibles" }}</span>
+            {% if description %}
+                <p class="text-sm mt-1">{{ description }}</p>
+            {% endif %}
+        </div>
+    </td>
+</tr>
