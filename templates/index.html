@@ -40,10 +40,83 @@
         {% endblock %}
 
         {% block main_content %}
-            <div class="bg-white p-6 rounded shadow">
-                <h3 class="text-xl font-bold mb-4">Bienvenido al Panel de Control</h3>
-                <p>Selecciona una opción del menú para comenzar.</p>
+            {% if messages %}
+            <div class="mb-6 space-y-2">
+                {% for message in messages %}
+                    {% include 'components/message_alert.html' with message=message %}
+                {% endfor %}
             </div>
+            {% endif %}
+
+            {% if is_admin %}
+                <!-- Vista para Administradores -->
+                <div class="mb-6">
+                    <h2 class="text-2xl font-bold text-gray-800 mb-4">Puertos SRT - Vista Administrador</h2>
+                    
+                    <!-- Selector de Cliente -->
+                    <div class="bg-white rounded-lg border border-gray-200 shadow-sm p-4 mb-6">
+                        <label for="client-selector" class="block text-sm font-medium text-gray-700 mb-2">
+                            Seleccionar Cliente:
+                        </label>
+                        <select id="client-selector" 
+                                class="block w-full md:w-96 px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                onchange="if(this.value) window.location.href='?client_id='+this.value;">
+                            <option value="">-- Seleccione un cliente --</option>
+                            {% for client in clients %}
+                                <option value="{{ client.pk }}" {% if selected_client and selected_client.pk == client.pk %}selected{% endif %}>
+                                    {{ client.name }} ({{ client.user.username }})
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <!-- Tarjetas de Puertos -->
+                    {% if selected_client %}
+                        <h3 class="text-lg font-semibold text-gray-700 mb-4">
+                            Puertos de: <span class="text-blue-600">{{ selected_client.name }}</span>
+                        </h3>
+                        
+                        {% if ports_info %}
+                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                                {% for port in ports_info %}
+                                    {% include 'components/port_card.html' with port=port %}
+                                {% endfor %}
+                            </div>
+                        {% else %}
+                            {% include 'components/empty_state.html' with icon='icons/alert_circle_icon.html' title='Sin puertos asignados' description='Este cliente no tiene puertos asignados actualmente.' %}
+                        {% endif %}
+                    {% else %}
+                        {% include 'components/empty_state.html' with icon='icons/users_icon.html' title='Seleccione un cliente' description='Use el selector superior para ver los puertos de un cliente.' %}
+                    {% endif %}
+                </div>
+
+            {% else %}
+                <!-- Vista para Clientes -->
+                <div class="mb-6">
+                    <h2 class="text-2xl font-bold text-gray-800 mb-4">Mis Puertos SRT</h2>
+                    
+                    {% if client %}
+                        <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                            <div class="flex items-center">
+                                {% include 'icons/users_icon.html' with size="20" class="text-blue-600 mr-2" %}
+                                <span class="text-sm font-medium text-blue-800">Cliente: {{ client.name }}</span>
+                            </div>
+                        </div>
+
+                        {% if ports_info %}
+                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                                {% for port in ports_info %}
+                                    {% include 'components/port_card.html' with port=port %}
+                                {% endfor %}
+                            </div>
+                        {% else %}
+                            {% include 'components/empty_state.html' with icon='icons/alert_circle_icon.html' title='Sin puertos asignados' description='No tienes puertos asignados actualmente. Contacta al administrador.' %}
+                        {% endif %}
+                    {% else %}
+                        {% include 'components/empty_state.html' with icon='icons/warning_icon.html' title='No tienes un cliente asignado' description='Tu usuario no está asociado a ningún cliente. Contacta al administrador.' %}
+                    {% endif %}
+                </div>
+            {% endif %}
         {% endblock %}
 
     </main>

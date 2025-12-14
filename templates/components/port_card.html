@@ -1,0 +1,40 @@
+{% load static %}
+
+<div class="bg-white rounded-2xl border border-gray-200 shadow-sm hover:shadow-md transition-all duration-300 p-6">
+    <!-- Header de la tarjeta -->
+    <div class="flex items-center justify-between mb-4">
+        <h3 class="text-lg font-bold text-gray-800">Puerto {{ port.port_number }}</h3>
+        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {% if not port.is_available %}bg-green-100 text-green-800{% else %}bg-gray-100 text-gray-800{% endif %}">
+            {% if not port.is_available %}Activo{% else %}Disponible{% endif %}
+        </span>
+    </div>
+
+    <!-- Información de conexión SRT -->
+    <div class="space-y-3 mb-6">
+        <div class="flex items-start">
+            <span class="text-sm font-medium text-gray-500 w-20">Host:</span>
+            <span class="text-sm text-gray-900 font-mono bg-gray-50 px-2 py-1 rounded flex-1">{{ port.host }}</span>
+        </div>
+        <div class="flex items-start">
+            <span class="text-sm font-medium text-gray-500 w-20">Puerto:</span>
+            <span class="text-sm text-gray-900 font-mono bg-gray-50 px-2 py-1 rounded flex-1">{{ port.port_number }}</span>
+        </div>
+        <div class="flex items-start">
+            <span class="text-sm font-medium text-gray-500 w-20">Cliente:</span>
+            <span class="text-sm text-gray-900 font-mono bg-gray-50 px-2 py-1 rounded flex-1">{{ port.client_name }}</span>
+        </div>
+        <div class="flex items-start">
+            <span class="text-sm font-medium text-gray-500 w-20">Servidor:</span>
+            <span class="text-sm text-gray-700 bg-gray-50 px-2 py-1 rounded flex-1 truncate" title="{{ port.server_name }}">{{ port.server_name }}</span>
+        </div>
+    </div>
+
+    <!-- Acción de reinicio -->
+    <form action="{% url 'port_restart' port.client_name port.port_number %}" method="post" class="w-full">
+        {% csrf_token %}
+        <button type="submit" class="w-full flex items-center justify-center px-4 py-2.5 bg-orange-500 hover:bg-orange-600 text-white font-medium rounded-lg transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] shadow-sm hover:shadow">
+            {% include 'icons/refresh_icon.html' with size="18" class="mr-2" %}
+            Reiniciar Puerto
+        </button>
+    </form>
+</div>

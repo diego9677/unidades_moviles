@@ -2,6 +2,7 @@ from django.views.generic import CreateView, UpdateView, DeleteView, ListView, V
 from django.urls import reverse_lazy
 from django.db import transaction
 from django.contrib.auth.models import User
+from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib import messages
 from django.shortcuts import redirect
 from django.http import HttpResponseRedirect
@@ -14,7 +15,7 @@ from core.services import client_ssh_service
 logger = logging.getLogger(__name__)
 
 
-class ClientListView(ListView):
+class ClientListView(LoginRequiredMixin, ListView):
     model = Client
     template_name = 'core/client_list.html'
     context_object_name = 'clients'
@@ -34,7 +35,7 @@ class ClientListView(ListView):
         return context
 
 
-class ClientCreateView(CreateView):
+class ClientCreateView(LoginRequiredMixin, CreateView):
     model = Client
     form_class = ClientCreateForm
     template_name = 'core/client_form.html'
@@ -52,7 +53,10 @@ class ClientCreateView(CreateView):
                 self.object = form.save(commit=False)
                 self.object.user = user
 
-                # 3. Obtener puertos disponibles (AUTO-ASSIGN)
+                # 3. Guardar el cliente primero (necesario para asignar relaciones)
+                self.object.save()
+
+                # 4. Obtener puertos disponibles (AUTO-ASSIGN)
                 num_ports = form.cleaned_data['num_ports']
                 server = self.object.server
 
@@ -73,7 +77,7 @@ class ClientCreateView(CreateView):
                         port_obj.assigned_client = self.object
                         port_obj.save()
 
-                    # SAVE TO CLIENT MODEL (como string csv, legacy support)
+                    # UPDATE CLIENT MODEL (como string csv, legacy support)
                     self.object.port_list = ", ".join(map(str, ports))
                     self.object.save()
 
@@ -101,7 +105,7 @@ class ClientCreateView(CreateView):
             return self.form_invalid(form)
 
 
-class ClientUpdateView(UpdateView):
+class ClientUpdateView(LoginRequiredMixin, UpdateView):
     model = Client
     form_class = ClientUpdateForm
     template_name = 'core/client_form.html'
@@ -112,7 +116,7 @@ class ClientUpdateView(UpdateView):
         return super().form_valid(form)
 
 
-class ClientDeleteView(DeleteView):
+class ClientDeleteView(LoginRequiredMixin, DeleteView):
     model = Client
     template_name = 'core/client_confirm_delete.html'
     success_url = reverse_lazy('client_list')
@@ -174,7 +178,7 @@ class ClientDeleteView(DeleteView):
             return HttpResponseRedirect(success_url)
 
 
-class ClientActionView(View):
+class ClientActionView(LoginRequiredMixin, View):
     def post(self, request, client_name, action):
         try:
             client = Client.objects.get(name=client_name)
@@ -201,7 +205,7 @@ class ClientActionView(View):
         return redirect('client_list')
 
 
-class PortRestartView(View):
+class PortRestartView(LoginRequiredMixin, View):
     def post(self, request, client_name, port):
         try:
             client = Client.objects.get(name=client_name)
