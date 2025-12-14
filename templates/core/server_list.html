@@ -1,0 +1,77 @@
+{% extends 'index.html' %}
+
+{% block title %}Servidores | Unidades Móviles{% endblock %}
+
+{% block main_content %}
+<div class="container mx-auto">
+    <div class="flex justify-between items-center mb-6">
+        <h1 class="text-2xl font-bold text-gray-800">Gestión de Servidores</h1>
+        <a href="{% url 'server_add' %}" class="btn-primary w-auto px-4 py-2 shadow-sm">
+            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+            Nuevo Servidor
+        </a>
+    </div>
+
+    {% if messages %}
+    <div class="mb-6 space-y-2">
+        {% for message in messages %}
+        <div class="p-4 rounded-lg shadow-sm border-l-4 flex items-center {% if message.tags == 'error' %}bg-red-50 text-red-700 border-red-500{% else %}bg-green-50 text-green-700 border-green-500{% endif %}">
+            {{ message }}
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <div class="bg-white shadow-xl rounded-xl overflow-hidden border border-slate-100">
+        <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-slate-50">
+                <tr>
+                    <th class="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Host</th>
+                    <th class="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Usuario</th>
+                    <th class="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Rango Puertos</th>
+                    <th class="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Clientes</th>
+                    <th class="px-6 py-4 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Acciones</th>
+                </tr>
+            </thead>
+            <tbody class="bg-white divide-y divide-gray-200">
+                {% for server in servers %}
+                <tr class="hover:bg-slate-50 transition-colors">
+                    <td class="px-6 py-4 text-sm font-medium text-gray-900">{{ server.host }}</td>
+                    <td class="px-6 py-4 text-sm text-gray-500">{{ server.username }}</td>
+                    <td class="px-6 py-4 text-sm text-gray-500">{{ server.initial_port }} - {{ server.final_port }}</td>
+                    <td class="px-6 py-4 text-sm text-gray-500">
+                         <div class="flex flex-col space-y-1">
+                             <div class="flex justify-between text-xs">
+                                <span>{{ server.clients.count }} Clientes</span>
+                             </div>
+                             {% with total=server.ports.count used=server.ports.filter_unavailable.count %}
+                             <!-- Note: Django templates need custom filter or view logic for filter arg. 
+                                  Simplifying: we will add a property/method to Server model or annotate in View -->
+                             <span class="text-xs text-gray-500">
+                                 Puertos: {{ server.get_used_ports_count }} / {{ server.ports.count }}
+                             </span>
+                             <div class="w-full bg-gray-200 rounded-full h-1.5 dark:bg-gray-700">
+                                 <div class="bg-blue-600 h-1.5 rounded-full" style="width: {{ server.get_usage_percent }}%"></div>
+                             </div>
+                             {% endwith %}
+                         </div>
+                    </td>
+                    <td class="px-6 py-4 text-right text-sm font-medium">
+                        <div class="flex justify-end space-x-3">
+                            <a href="{% url 'server_edit' server.pk %}" class="text-indigo-600 hover:text-indigo-900 flex items-center">Editar</a>
+                            <a href="{% url 'server_delete' server.pk %}" class="text-red-600 hover:text-red-900 flex items-center">Eliminar</a>
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="5" class="px-6 py-12 text-center text-gray-500">
+                        No hay servidores registrados.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

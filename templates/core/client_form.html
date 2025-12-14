@@ -1,4 +1,5 @@
 {% extends 'index.html' %}
+{% load widget_tweaks %}
 
 {% block title %}
     {% if object %}Editar{% else %}Crear{% endif %} Cliente | Unidades Móviles
@@ -6,43 +7,44 @@
 
 {% block main_content %}
 <div class="container mx-auto px-4 py-8">
-    <div class="max-w-md mx-auto bg-white shadow rounded-lg p-6">
-        <h1 class="text-2xl font-bold mb-6">
+    <div class="max-w-md mx-auto bg-white shadow-xl rounded-xl overflow-hidden border border-slate-100 p-8">
+        <h1 class="text-2xl font-bold mb-6 text-gray-800">
             {% if object %}Editar{% else %}Crear{% endif %} Cliente
         </h1>
 
         {% if messages %}
-        <div class="mb-4">
+        <div class="mb-6">
             {% for message in messages %}
-            <div class="p-3 rounded text-sm mb-2 {% if message.tags == 'error' %}bg-red-100 text-red-700{% else %}bg-green-100 text-green-700{% endif %}">
+            <div class="p-3 rounded text-sm mb-2 {% if message.tags == 'error' %}bg-red-50 text-red-700 border border-red-200{% else %}bg-green-50 text-green-700 border border-green-200{% endif %}">
                 {{ message }}
             </div>
             {% endfor %}
         </div>
         {% endif %}
 
-        <form method="post">
+        <form method="post" class="space-y-4">
             {% csrf_token %}
             
             {% for field in form %}
-            <div class="mb-4">
-                <label for="{{ field.id_for_label }}" class="block text-gray-700 text-sm font-bold mb-2">
+            <div>
+                <label for="{{ field.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">
                     {{ field.label }}
+                    {% if field.field.required %}<span class="text-red-500">*</span>{% endif %}
                 </label>
-                <!-- Render field manually or use widget tweaks -->
+                
                 {% if field.field.widget.input_type == 'checkbox' %}
-                    {{ field }}
+                    <div class="flex items-center">
+                        {{ field|add_class:"h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded" }}
+                        <span class="ml-2 text-sm text-gray-600">{{ field.help_text }}</span>
+                    </div>
                 {% else %}
-                    <input type="{{ field.field.widget.input_type|default:'text' }}" 
-                           name="{{ field.name }}" 
-                           id="{{ field.id_for_label }}" 
-                           value="{{ field.value|default_if_none:'' }}"
-                           class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline {% if field.errors %}border-red-500{% endif %}">
+                    {{ field|add_class:'input-primary h-9' }}
                 {% endif %}
                 
-                {% if field.help_text %}
-                <p class="text-gray-500 text-xs mt-1">{{ field.help_text }}</p>
+                {% if field.help_text and field.field.widget.input_type != 'checkbox' %}
+                <p class="text-xs text-gray-500 mt-1">{{ field.help_text }}</p>
                 {% endif %}
+                
                 {% if field.errors %}
                 <div class="text-red-500 text-xs mt-1">
                     {{ field.errors|striptags }}
@@ -51,12 +53,12 @@
             </div>
             {% endfor %}
 
-            <div class="flex items-center justify-between mt-6">
-                <a href="{% url 'client_list' %}" class="text-gray-600 hover:text-gray-800">
+            <div class="flex items-center gap-3 mt-8 pt-4">
+                <a href="{% url 'client_list' %}" class="btn-light py-2 w-1/2 text-center no-underline">
                     Cancelar
                 </a>
-                <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
-                    Guardar
+                <button type="submit" class="btn-primary py-2 w-1/2">
+                    {% if object %}Guardar Cambios{% else %}Crear Cliente{% endif %}
                 </button>
             </div>
         </form>

@@ -1,1 +1,61 @@
 @import "tailwindcss";
+
+/* ───────────────────────────────────────────────
+   Tailwind v4 – index.css  (app principal)
+   Compila con:
+   npx tailwindcss -i ./css/index.css -o ../tracking/static/tracking/css/index.css --watch
+──────────────────────────────────────────────── */
+
+/* === Diseño: colores + animaciones === */
+@theme {
+  /* ─ Colores de marca ─ */
+  --color-primary:                     #ff5a00;
+  --color-primary-hover:               #ff5739;
+  --color-secundary:                   #ff7b33;
+
+}
+
+
+/* === Componentes reutilizables (Tailwind v4) === */
+@layer components {
+  /* Botón base */
+  .btn {
+    @apply outline-none w-full rounded-md flex justify-center items-center text-sm font-semibold;
+  }
+
+  /* Primario */
+  .btn-primary {
+    @apply outline-none w-full rounded-md flex justify-center items-center text-sm font-semibold
+           text-white bg-primary hover:bg-primary-hover
+           disabled:opacity-80 disabled:cursor-not-allowed;
+  }
+
+  /* Claro */
+  .btn-light {
+    @apply outline-none w-full rounded-md flex justify-center items-center text-sm font-semibold
+           text-black ring-1 ring-gray-200
+           hover:text-gray-700 hover:bg-gray-100 hover:ring-gray-200;
+  }
+
+  /* Seleccionado */
+  .btn-selected {
+    @apply text-black bg-gray-200 font-extrabold ring-1 ring-gray-300;
+  }
+
+  /* Enlace */
+  .link {
+    @apply text-sm font-medium text-gray-700 hover:text-primary;
+  }
+
+  /* Input */
+  .input-primary {
+    @apply bg-white text-xs px-2 text-gray-700 placeholder-gray-400 outline-none
+           ring-1 ring-gray-200 rounded-md focus:ring-2 focus:ring-primary w-full;
+  }
+
+  /* Botón secundario (icono, etc.) */
+  .btn-secondary {
+    @apply flex items-center justify-center px-2 rounded-md
+           hover:ring-1 hover:ring-gray-200 transition-all outline-none;
+  }
+}

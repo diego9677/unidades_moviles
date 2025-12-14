@@ -16,6 +16,15 @@ class Client(models.Model):
         verbose_name="Usuario",
     )
 
+    server = models.ForeignKey(
+        "Server",
+        on_delete=models.SET_NULL, # Or CASCADE/PROTECT depending on reqs, SET_NULL safer for now
+        null=True,
+        blank=True,
+        related_name="clients",
+        verbose_name="Servidor Asignado"
+    )
+
     class Meta:
         verbose_name = "Cliente"
         verbose_name_plural = "Clientes"

@@ -14,13 +14,13 @@ class ClientSSHService:
     Comando base: /usr/local/bin/manage_client
     """
 
-    def __init__(self):
-        # Credenciales hardcodeadas (Entorno de pruebas)
-        self.host = 'srv4.elittehosting.com'
-        self.port = 22
-        self.user = 'root'
-        self.password = '312869Sc*/'
-        self.key_path = None
+    def __init__(self, server):
+        self.server = server
+        self.host = server.host
+        self.port = getattr(server, 'ssh_port', 22) # Default to 22 if not in model yet, but I added it
+        self.user = server.username
+        self.password = server.password
+        self.key_path = None # Could add this to model later
         self.command_path = "/usr/local/bin/manage_client"
 
     def _get_connection(self):
@@ -152,5 +152,6 @@ class ClientSSHService:
         return self._run_command(args)
 
 # Instancia global para uso fácil
-def get_ssh_service() -> ClientSSHService:
-    return ClientSSHService()
+# Instancia factory
+def get_ssh_service(server) -> ClientSSHService:
+    return ClientSSHService(server)

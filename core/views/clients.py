@@ -1,24 +1,17 @@
-
-
-from django.views.generic import CreateView, UpdateView, DeleteView, ListView, TemplateView, View
+from django.views.generic import CreateView, UpdateView, DeleteView, ListView, View
 from django.urls import reverse_lazy
 from django.db import transaction
 from django.contrib.auth.models import User
-from django.contrib import messages
 from django.contrib import messages
 from django.shortcuts import redirect
 from django.http import HttpResponseRedirect
 import logging
 
-from .models import Client
-from .forms import ClientCreateForm, ClientUpdateForm
-# from .services import srv4_moviles # Replaced by SSH
-from .services import srv4_ssh
+from core.models import Client
+from core.forms import ClientCreateForm, ClientUpdateForm
+from core.services import srv4_ssh
 
 logger = logging.getLogger(__name__)
-
-# Instancia del servicio SSH
-ssh_service = srv4_ssh.get_ssh_service()
 
 class ClientListView(ListView):
     model = Client
@@ -58,19 +51,45 @@ class ClientCreateView(CreateView):
                 self.object = form.save(commit=False)
                 self.object.user = user
                 
-                # 3. Llamar a la API / SSH
-                ports_str = form.cleaned_data['port_list']
-                ports = [int(p.strip()) for p in ports_str.split(',') if p.strip()]
+                # 3. Obtener puertos disponibles (AUTO-ASSIGN)
+                num_ports = form.cleaned_data['num_ports']
+                server = self.object.server
                 
-                # CAMBIO: Usar SSH Service
-                response = ssh_service.create_client(self.object.name, ports)
+                if server:
+                    # LOCK & FETCH PORTS
+                    # Select N available ports ensuring concurrency safety
+                    available_ports = list(server.ports.filter(is_available=True).select_for_update().order_by('port_number')[:num_ports])
+                    
+                    if len(available_ports) < num_ports:
+                         raise ValueError(f"No hay suficientes puertos disponibles. Solicitados: {num_ports}, Disponibles: {len(available_ports)}")
+                    
+                    # EXTRACT NUMBERS
+                    ports = [p.port_number for p in available_ports]
+                    
+                    # ASSIGN PORTS IN DB
+                    for port_obj in available_ports:
+                        port_obj.is_available = False
+                        port_obj.assigned_client = self.object
+                        port_obj.save()
+                    
+                    # SAVE TO CLIENT MODEL (como string csv, legacy support)
+                    self.object.port_list = ", ".join(map(str, ports))
+                    self.object.save()
+
+                    # EXECUTE SSH
+                    ssh_service = srv4_ssh.get_ssh_service(server)
+                    response = ssh_service.create_client(self.object.name, ports)
+                    logger.info(f"SSH Response for create client: {response}")
+                else:
+                    logger.warning(f"Cliente {self.object.name} creado sin servidor asignado. No se generaron puertos ni SSH.")
+                    self.object.save()
                 
-                logger.info(f"SSH Response for create client: {response}")
-                
-                self.object.save()
-                
-                messages.success(self.request, f"Cliente {self.object.name} creado exitosamente.")
+                messages.success(self.request, f"Cliente {self.object.name} creado exitosamente con puertos: {self.object.port_list}")
                 return super().form_valid(form)
+
+        except ValueError as ve:
+            messages.error(self.request, f"Error de validación: {str(ve)}")
+            return self.form_invalid(form)
 
         except srv4_ssh.SSHException as e:
             messages.error(self.request, f"Error al crear cliente via SSH: {str(e)}")
@@ -104,20 +123,23 @@ class ClientDeleteView(DeleteView):
         
         try:
             # 1. Llamar a SSH para eliminar
-            ssh_service.delete_client(client_name)
+            if self.object.server:
+                # Liberar puertos en DB antes (o despues, pero dentro de try)
+                self.object.assigned_ports.update(is_available=True, assigned_client=None)
+
+                ssh_service = srv4_ssh.get_ssh_service(self.object.server)
+                ssh_service.delete_client(client_name)
+            else:
+                 logger.warning("Eliminando cliente sin servidor asignado, omitiendo SSH.")
             
             # 2. Eliminar de BD local
             try:
                 with transaction.atomic():
                      # Borramos el usuario directamente por ID.
-                     # Al tener on_delete=CASCADE en el modelo Client, esto debería borrar el cliente también.
-                     # Pero por seguridad y claridad explícita:
                     if user_id:
-                        # Usamos filter().delete() que es seguro si no existe
                         deleted_count, _ = User.objects.filter(pk=user_id).delete()
                         logger.info(f"Usuario asociado {user_id} eliminado. Registros afectados: {deleted_count}")
                     
-                    # Si por alguna razón el cliente sigue vivo (ej: no cascada), lo rematamos
                     if Client.objects.filter(pk=self.object.pk).exists():
                         self.object.delete()
                         logger.info(f"Cliente local {client_name} eliminado explícitamente.")
@@ -131,7 +153,6 @@ class ClientDeleteView(DeleteView):
                  return HttpResponseRedirect(success_url)
                 
         except srv4_ssh.SSHException as e:
-            # Si falla SSH, notificamos pero procedemos a borrar localmente
             messages.warning(self.request, f"Advertencia: El cliente fue eliminado localmente, pero hubo un error en el servidor remoto: {str(e)}")
             logger.error(f"Error SSH al eliminar {client_name}: {str(e)}")
             
@@ -139,8 +160,6 @@ class ClientDeleteView(DeleteView):
                 with transaction.atomic():
                     if user_id:
                         User.objects.filter(pk=user_id).delete()
-                        logger.info(f"Usuario {user_id} eliminado (Fallback SSH).")
-                    
                     if Client.objects.filter(pk=self.object.pk).exists():
                         self.object.delete()
                 
@@ -153,20 +172,27 @@ class ClientDeleteView(DeleteView):
             messages.error(self.request, f"Error interno al eliminar: {str(e)}")
             return HttpResponseRedirect(success_url)
 
+
 class ClientActionView(View):
     def post(self, request, client_name, action):
         try:
-            if action == 'start':
-                ssh_service.start_client(client_name)
-                messages.success(request, f"Cliente {client_name} iniciado.")
-            elif action == 'stop':
-                ssh_service.stop_client(client_name)
-                messages.success(request, f"Cliente {client_name} detenido.")
-            elif action == 'restart':
-                ssh_service.restart_client(client_name)
-                messages.success(request, f"Cliente {client_name} reiniciado.")
+            client = Client.objects.get(name=client_name)
+            if client.server:
+                ssh_service = srv4_ssh.get_ssh_service(client.server)
+                
+                if action == 'start':
+                    ssh_service.start_client(client_name)
+                    messages.success(request, f"Cliente {client_name} iniciado.")
+                elif action == 'stop':
+                    ssh_service.stop_client(client_name)
+                    messages.success(request, f"Cliente {client_name} detenido.")
+                elif action == 'restart':
+                    ssh_service.restart_client(client_name)
+                    messages.success(request, f"Cliente {client_name} reiniciado.")
+                else:
+                    messages.error(request, f"Acción desconocida: {action}")
             else:
-                messages.error(request, f"Acción desconocida: {action}")
+                messages.warning(request, f"El cliente {client_name} no tiene servidor asignado.")
         except Exception as e:
             logger.exception(f"Error executing action {action} on {client_name}")
             messages.error(request, f"Error al ejecutar {action}: {str(e)}")
@@ -177,13 +203,15 @@ class ClientActionView(View):
 class PortRestartView(View):
     def post(self, request, client_name, port):
         try:
-            ssh_service.restart_port(client_name, port)
-            messages.success(request, f"Puerto {port} de {client_name} reiniciado.")
+            client = Client.objects.get(name=client_name)
+            if client.server:
+                ssh_service = srv4_ssh.get_ssh_service(client.server)
+                ssh_service.restart_port(client_name, port)
+                messages.success(request, f"Puerto {port} de {client_name} reiniciado.")
+            else:
+                messages.warning(request, f"El cliente no tiene servidor asignado.")
         except Exception as e:
             logger.exception(f"Error restarting port {port} for {client_name}")
             messages.error(request, f"Error al reiniciar puerto: {str(e)}")
         
         return redirect('client_list')
-
-class HomeView(TemplateView):
-    template_name = 'index.html'
