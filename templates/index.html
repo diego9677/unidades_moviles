@@ -4,24 +4,35 @@
 <div class="min-h-screen flex">
 
     <!-- SIDEBAR -->
-    <aside class="w-64 bg-gray-800 text-white p-5 space-y-6">
-        <h2 class="text-2xl font-bold">Panel SRT</h2>
+    <aside class="w-64 bg-gray-800 text-white space-y-6">
+        <div class="h-20 bg-gray-300 flex items-center justify-center">
+            Logo
+        </div>
 
-        <nav class="space-y-3">
+        <nav class="flex flex-col">
 
             <a href="{% url 'home' %}"
-               class="block px-3 py-2 rounded hover:bg-gray-700">
-                Inicio
+               class="p-4 rounded hover:bg-gray-700 flex items-center gap-2">
+               {% include 'icons/home_icon.html' with size=19 %}
+               <span class="text-sm font-semibold text-white">
+                    Inicio
+                </span>
             </a>
 
             <a href="{% url 'client_list' %}"
-               class="block px-3 py-2 rounded hover:bg-gray-700">
-                Gestión de clientes
+               class="p-4 rounded hover:bg-gray-700 flex items-center gap-2">
+                {% include 'icons/clients_icon.html' with size=19 %}
+                <span class="text-sm font-semibold text-white">
+                    Clientes
+                </span>
             </a>
 
             <a href="{% url 'server_list' %}"
-               class="block px-3 py-2 rounded hover:bg-gray-700">
-                Gestión de Servidores
+               class="p-4 rounded hover:bg-gray-700 flex items-center gap-2">
+                {% include 'icons/server_icon.html' with size=19 %}
+                <span class="text-sm font-semibold text-white">
+                    Servidores
+                </span>
             </a>
 
         </nav>

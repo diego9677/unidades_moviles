@@ -1,16 +1,16 @@
 from django.views.generic import CreateView, UpdateView, DeleteView, ListView, View
 from django.urls import reverse_lazy
 from django.db import transaction
-from django.contrib.auth.models import User
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib import messages
 from django.shortcuts import redirect
 from django.http import HttpResponseRedirect
 import logging
 
-from core.models import Client
+from core.models import Client, User
 from core.forms import ClientCreateForm, ClientUpdateForm
-from core.services import client_ssh_service
+# from core.services import client_ssh_service
+from core.services import client_api_service
 
 logger = logging.getLogger(__name__)
 
@@ -81,10 +81,10 @@ class ClientCreateView(LoginRequiredMixin, CreateView):
                     self.object.port_list = ", ".join(map(str, ports))
                     self.object.save()
 
-                    # EXECUTE SSH
-                    ssh_service = client_ssh_service.get_ssh_service(server)
-                    response = ssh_service.create_client(self.object.name, ports)
-                    logger.info(f"SSH Response for create client: {response}")
+                    # EXECUTE API
+                    api_service = client_api_service.get_api_service(server)
+                    response = api_service.create_client(self.object.name, ports)
+                    logger.info(f"API Response for create client: {response}")
                 else:
                     logger.warning(f"Cliente {self.object.name} creado sin servidor asignado. No se generaron puertos ni SSH.")
                     self.object.save()
@@ -96,8 +96,8 @@ class ClientCreateView(LoginRequiredMixin, CreateView):
             messages.error(self.request, f"Error de validación: {str(ve)}")
             return self.form_invalid(form)
 
-        except client_ssh_service.SSHException as e:
-            messages.error(self.request, f"Error al crear cliente via SSH: {str(e)}")
+        except client_api_service.APIException as e:
+            messages.error(self.request, f"Error al crear cliente via API: {str(e)}")
             return self.form_invalid(form)
         except Exception as e:
             logger.exception("Error creating client")
@@ -132,10 +132,10 @@ class ClientDeleteView(LoginRequiredMixin, DeleteView):
                 # Liberar puertos en DB antes (o despues, pero dentro de try)
                 self.object.assigned_ports.update(is_available=True, assigned_client=None)
 
-                ssh_service = client_ssh_service.get_ssh_service(self.object.server)
-                ssh_service.delete_client(client_name)
+                api_service = client_api_service.get_api_service(self.object.server)
+                api_service.delete_client(client_name)
             else:
-                logger.warning("Eliminando cliente sin servidor asignado, omitiendo SSH.")
+                logger.warning("Eliminando cliente sin servidor asignado, omitiendo API.")
 
             # 2. Eliminar de BD local
             try:
@@ -157,9 +157,9 @@ class ClientDeleteView(LoginRequiredMixin, DeleteView):
                 messages.error(self.request, f"Error eliminando localmente: {str(local_e)}")
                 return HttpResponseRedirect(success_url)
 
-        except client_ssh_service.SSHException as e:
+        except client_api_service.APIException as e:
             messages.warning(self.request, f"Advertencia: El cliente fue eliminado localmente, pero hubo un error en el servidor remoto: {str(e)}")
-            logger.error(f"Error SSH al eliminar {client_name}: {str(e)}")
+            logger.error(f"Error API al eliminar {client_name}: {str(e)}")
 
             try:
                 with transaction.atomic():
@@ -183,16 +183,16 @@ class ClientActionView(LoginRequiredMixin, View):
         try:
             client = Client.objects.get(name=client_name)
             if client.server:
-                ssh_service = client_ssh_service.get_ssh_service(client.server)
+                api_service = client_api_service.get_api_service(client.server)
 
                 if action == 'start':
-                    ssh_service.start_client(client_name)
+                    api_service.start_client(client_name)
                     messages.success(request, f"Cliente {client_name} iniciado.")
                 elif action == 'stop':
-                    ssh_service.stop_client(client_name)
+                    api_service.stop_client(client_name)
                     messages.success(request, f"Cliente {client_name} detenido.")
                 elif action == 'restart':
-                    ssh_service.restart_client(client_name)
+                    api_service.restart_client(client_name)
                     messages.success(request, f"Cliente {client_name} reiniciado.")
                 else:
                     messages.error(request, f"Acción desconocida: {action}")
@@ -210,8 +210,8 @@ class PortRestartView(LoginRequiredMixin, View):
         try:
             client = Client.objects.get(name=client_name)
             if client.server:
-                ssh_service = client_ssh_service.get_ssh_service(client.server)
-                ssh_service.restart_port(client_name, port)
+                api_service = client_api_service.get_api_service(client.server)
+                api_service.restart_port(client_name, port)
                 messages.success(request, f"Puerto {port} de {client_name} reiniciado.")
             else:
                 messages.warning(request, "El cliente no tiene servidor asignado.")

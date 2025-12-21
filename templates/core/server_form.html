@@ -6,7 +6,7 @@
 {% endblock %}
 
 {% block main_content %}
-<div class="min-h-screen flex items-center justify-center px-4 py-8 bg-gray-50">
+<div class="flex items-center justify-center px-4 py-8" x-data="serverForm()">
     <div class="w-[500px] h-[500px] bg-white shadow-lg rounded-2xl border border-gray-200 overflow-hidden relative flex flex-col">
         <!-- Header minimalista -->
         <div class="relative px-6 py-4 border-b border-gray-200">
@@ -28,7 +28,7 @@
             </div>
             {% endif %}
 
-            <form method="post" class="space-y-5">
+            <form method="post" class="space-y-5" x-ref="serverForm">
                 {% csrf_token %}
                 
                 {% for field in form %}
@@ -56,7 +56,7 @@
             <a href="{% url 'server_list' %}" class="btn-light px-6 py-2.5 w-auto">
                 Cancelar
             </a>
-            <button type="submit" form="server-form" class="btn-primary px-6 py-2.5 w-auto">
+            <button type="button" @click="submitForm()" class="btn-primary px-6 py-2.5 w-auto">
                 Guardar Servidor
             </button>
         </div>
@@ -64,17 +64,12 @@
 </div>
 
 <script>
-// Hacer que el botón submit funcione con el formulario
-document.addEventListener('DOMContentLoaded', function() {
-    const form = document.querySelector('form');
-    const submitBtn = document.querySelector('button[type="submit"]');
-    
-    if (form && submitBtn) {
-        submitBtn.addEventListener('click', function(e) {
-            e.preventDefault();
-            form.submit();
-        });
+function serverForm() {
+    return {
+        submitForm() {
+            this.$refs.serverForm.submit();
+        }
     }
-});
+}
 </script>
 {% endblock %}

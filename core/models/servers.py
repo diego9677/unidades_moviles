@@ -1,14 +1,15 @@
 from django.db import models
 
+
 class Server(models.Model):
     host = models.CharField(max_length=255, verbose_name="Host")
-    username = models.CharField(max_length=100, verbose_name="Usuario SSH")
-    password = models.CharField(max_length=255, verbose_name="Contraseña SSH", help_text="Se guardará en texto plano (Precaución)")
+    api_key = models.CharField(max_length=255, verbose_name="Clave API", help_text="Clave API para autenticación")
     initial_port = models.IntegerField(verbose_name="Puerto Inicial", help_text="Inicio del rango de puertos")
     final_port = models.IntegerField(verbose_name="Puerto Final", help_text="Fin del rango de puertos")
-    
-    # Optional: SSH Port if simpler than 22
-    ssh_port = models.IntegerField(default=22, verbose_name="Puerto de Conexión SSH")
+
+    class Meta:
+        verbose_name = "Servidor"
+        verbose_name_plural = "Servidores"
 
     def __str__(self):
         return f"{self.host} ({self.initial_port}-{self.final_port})"
@@ -20,7 +21,8 @@ class Server(models.Model):
     @property
     def get_usage_percent(self):
         total = self.ports.count()
-        if total == 0: return 0
+        if total == 0:
+            return 0
         return int((self.get_used_ports_count / total) * 100)
 
     def save(self, *args, **kwargs):
@@ -36,7 +38,7 @@ class Server(models.Model):
         for port in range(self.initial_port, self.final_port + 1):
             if port not in existing_ports:
                 new_ports.append(PortServer(server=self, port_number=port))
-        
+
         if new_ports:
             PortServer.objects.bulk_create(new_ports)
 
@@ -48,16 +50,16 @@ class Server(models.Model):
             # Check range
             if not (self.initial_port <= port <= self.final_port):
                 return False, f"El puerto {port} está fuera del rango permitido ({self.initial_port}-{self.final_port})"
-            
+
             # Check availability in DB
             port_obj = self.ports.filter(port_number=port).first()
             if not port_obj:
-                 # Should not happen if generate_ports worked, but safe check
-                 return False, f"El puerto {port} no está gestionado por este servidor."
-            
+                # Should not happen if generate_ports worked, but safe check
+                return False, f"El puerto {port} no está gestionado por este servidor."
+
             if not port_obj.is_available:
                 return False, f"El puerto {port} ya está ocupado."
-                
+
         return True, None
 
 
@@ -66,10 +68,10 @@ class PortServer(models.Model):
     port_number = models.IntegerField(verbose_name="Número de Puerto")
     is_available = models.BooleanField(default=True, verbose_name="Disponible")
     assigned_client = models.ForeignKey(
-        'Client', 
-        on_delete=models.SET_NULL, 
-        null=True, 
-        blank=True, 
+        'Client',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
         related_name='assigned_ports',
         verbose_name="Cliente Asignado"
     )
@@ -78,12 +80,7 @@ class PortServer(models.Model):
         verbose_name = "Puerto de Servidor"
         verbose_name_plural = "Puertos de Servidores"
         unique_together = ('server', 'port_number')
-    
+
     def __str__(self):
         status = "Libre" if self.is_available else "Ocupado"
         return f"{self.server.host}:{self.port_number} ({status})"
-
-
-    class Meta:
-        verbose_name = "Servidor"
-        verbose_name_plural = "Servidores"
