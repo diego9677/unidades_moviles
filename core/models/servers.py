@@ -68,7 +68,7 @@ class PortServer(models.Model):
     port_number = models.IntegerField(verbose_name="Número de Puerto")
     is_available = models.BooleanField(default=True, verbose_name="Disponible")
     assigned_client = models.ForeignKey(
-        'Client',
+        'User',
         on_delete=models.SET_NULL,
         null=True,
         blank=True,

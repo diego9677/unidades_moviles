@@ -1,5 +1,5 @@
 from django import forms
-from .models import Client, Server, User
+from .models import Server, User
 
 
 class ServerForm(forms.ModelForm):
@@ -17,8 +17,8 @@ class ClientCreateForm(forms.ModelForm):
     num_ports = forms.IntegerField(min_value=1, initial=1, label="Cantidad de Puertos", help_text="Número de puertos a asignar automáticamente")
 
     class Meta:
-        model = Client
-        fields = ['server', 'name']  # port_list removed from fields, logic handles it
+        model = User
+        fields = ['server']
         help_texts = {
             'server': 'Seleccione el servidor donde se alojará este cliente.',
         }
@@ -44,64 +44,8 @@ class ClientCreateForm(forms.ModelForm):
 
 
 class ClientUpdateForm(forms.ModelForm):
-    port_list = forms.CharField(label="Lista de Puertos", help_text="Ingrese los puertos separados por coma (ej: 1001, 1002)")
-
     class Meta:
-        model = Client
-        fields = ['server', 'name', 'port_list']
+        model = User
+        fields = ['server']
 
-    def clean(self):
-        cleaned_data = super().clean()
-        server = cleaned_data.get('server')
-        ports_str = cleaned_data.get('port_list')
 
-        # If server or ports didn't change, we might skip re-validation if logic gets complex,
-        # but safely re-validating is better to avoid race conditions or manual DB changes.
-        # Ideally exclude *current* client's usage from check, but Server.get_used_ports() includes us.
-        # We need to handle "self collision" if we are editing.
-
-        if not ports_str:
-            return cleaned_data
-
-        try:
-            ports = [int(p.strip()) for p in ports_str.split(',') if p.strip()]
-        except ValueError:
-            self.add_error('port_list', "Invalid format")
-            return cleaned_data
-
-        if server and self.instance.pk:
-            # We must exclude our own ports from the "used" check if we are keeping them.
-            # However check_ports_availability checks against get_used_ports which queries DB.
-            # Since we haven't saved, DB has old ports.
-            # We can implement a more robust check or just proceed.
-            # Simple fix: get used ports, remove *our* stored ports, then check.
-
-            # This logic fits better in model or service, but for now here:
-            used_ports = server.get_used_ports()
-
-            # Remove current instance ports from used_ports
-            current_ports_str = self.instance.port_list
-            if current_ports_str:
-                try:
-                    current_ports = [int(p.strip()) for p in current_ports_str.split(',') if p.strip()]
-                    for p in current_ports:
-                        if p in used_ports:
-                            used_ports.remove(p)
-                except Exception as e:
-                    print(e)
-                    pass
-
-            # Now check
-            for port in ports:
-                if not (server.initial_port <= port <= server.final_port):
-                    raise forms.ValidationError(f"El puerto {port} está fuera del rango ({server.initial_port}-{server.final_port})")
-                if port in used_ports:
-                    raise forms.ValidationError(f"El puerto {port} ya está en uso.")
-
-        elif server:
-            # New server assignment (or new object, handled by CreateForm, but UpdateForm can also set server)
-            is_valid, error_msg = server.check_ports_availability(ports)
-            if not is_valid:
-                raise forms.ValidationError(error_msg)
-
-        return cleaned_data

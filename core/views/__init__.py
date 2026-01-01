@@ -5,11 +5,11 @@ from .clients import (
     ClientUpdateView,
     ClientDeleteView,
     ClientActionView,
-    PortRestartView,
+    PortRestartView
 )
 from .servers import (
     ServerListView,
     ServerCreateView,
     ServerUpdateView,
-    ServerDeleteView,
+    ServerDeleteView
 )

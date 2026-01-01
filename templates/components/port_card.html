@@ -1,40 +1,173 @@
 {% load static %}
 
-<div class="bg-white rounded-2xl border border-gray-200 shadow-sm hover:shadow-md transition-all duration-300 p-6">
-    <!-- Header de la tarjeta -->
-    <div class="flex items-center justify-between mb-4">
-        <h3 class="text-lg font-bold text-gray-800">Puerto {{ port.port_number }}</h3>
-        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {% if not port.is_available %}bg-green-100 text-green-800{% else %}bg-gray-100 text-gray-800{% endif %}">
-            {% if not port.is_available %}Activo{% else %}Disponible{% endif %}
-        </span>
+<div class="bg-white rounded-lg border border-gray-200 shadow-md hover:shadow-lg transition-all duration-300 overflow-hidden w-[420px]"
+     x-data="{
+         dimensions: '420x236 px',
+         copied: { input: false, output: false, inputStreamId: false, outputStreamId: false },
+         inputBaseUrl: 'srt://{{ port.host }}:{{ port.port_number }}',
+         outputBaseUrl: 'srt://{{ port.host }}:{{ port.port_number }}',
+         inputStreamId: '/input/live/movil{{ port.mobile_index }}',
+         outputStreamId: '/output/live/movil{{ port.mobile_index }}',
+         inputUrl: 'srt://{{ port.host }}:{{ port.port_number }}/streamid=/input/live/movil{{ port.mobile_index }}',
+         outputUrl: 'srt://{{ port.host }}:{{ port.port_number }}/streamid=/output/live/movil{{ port.mobile_index }}',
+         iframeUrl: 'https://{{ port.host }}/{{ port.client_name }}/movil{{ port.mobile_index }}/',
+         updateDimensions() {
+             const container = this.$refs.placeholder;
+             if (container) {
+                 this.dimensions = container.offsetWidth + 'x' + container.offsetHeight + ' px';
+             }
+         },
+         copyToClipboard(text, type) {
+             navigator.clipboard.writeText(text).then(() => {
+                 this.copied[type] = true;
+                 setTimeout(() => {
+                     this.copied[type] = false;
+                 }, 2000);
+             });
+         }
+     }"
+     x-init="updateDimensions(); window.addEventListener('resize', () => updateDimensions());"
+     class="flex flex-col">
+    
+    <!-- Video Player con iframe -->
+    <div x-ref="placeholder" class="relative bg-gray-900 group aspect-video overflow-hidden">
+        {% if not port.is_available %}
+            <iframe 
+                :src="iframeUrl"
+                class="absolute inset-0 w-full h-full border-0 pointer-events-none"
+                allow="autoplay; fullscreen"
+                allowfullscreen
+                style="pointer-events: none;">
+            </iframe>
+            <!-- Overlay para bloquear interacciones -->
+            <div class="absolute inset-0 pointer-events-auto" style="background: transparent;"></div>
+        {% else %}
+            <!-- Mensaje de Fuera de Línea -->
+            <div class="absolute inset-0 bg-gradient-to-br from-gray-700 to-gray-800 flex items-center justify-center">
+                <div class="text-center">
+                    {% include 'icons/offline_icon.html' with size="64" class="mx-auto mb-4 text-gray-500" %}
+                    <p class="text-white text-xl font-bold mb-2">Fuera de Línea</p>
+                    <p class="text-gray-400 text-sm">movil{{ port.mobile_index }}</p>
+                    <p class="text-gray-500 text-xs mt-2" x-text="dimensions"></p>
+                </div>
+            </div>
+        {% endif %}
     </div>
 
-    <!-- Información de conexión SRT -->
-    <div class="space-y-3 mb-6">
-        <div class="flex items-start">
-            <span class="text-sm font-medium text-gray-500 w-20">Host:</span>
-            <span class="text-sm text-gray-900 font-mono bg-gray-50 px-2 py-1 rounded flex-1">{{ port.host }}</span>
+    <!-- Content -->
+    <div class="p-4">
+        <!-- Header -->
+        <div class="mb-4">
+            <h3 class="text-lg font-bold text-gray-800 flex items-center gap-2">
+                {% include 'icons/video_camera_icon.html' with size="20" class="text-blue-600" %}
+                movil{{ port.mobile_index }}
+            </h3>
+            <p class="text-sm text-gray-500">Puerto: {{ port.port_number }}</p>
         </div>
-        <div class="flex items-start">
-            <span class="text-sm font-medium text-gray-500 w-20">Puerto:</span>
-            <span class="text-sm text-gray-900 font-mono bg-gray-50 px-2 py-1 rounded flex-1">{{ port.port_number }}</span>
-        </div>
-        <div class="flex items-start">
-            <span class="text-sm font-medium text-gray-500 w-20">Cliente:</span>
-            <span class="text-sm text-gray-900 font-mono bg-gray-50 px-2 py-1 rounded flex-1">{{ port.client_name }}</span>
-        </div>
-        <div class="flex items-start">
-            <span class="text-sm font-medium text-gray-500 w-20">Servidor:</span>
-            <span class="text-sm text-gray-700 bg-gray-50 px-2 py-1 rounded flex-1 truncate" title="{{ port.server_name }}">{{ port.server_name }}</span>
-        </div>
-    </div>
 
-    <!-- Acción de reinicio -->
-    <form action="{% url 'port_restart' port.client_name port.port_number %}" method="post" class="w-full">
-        {% csrf_token %}
-        <button type="submit" class="w-full flex items-center justify-center px-4 py-2.5 bg-orange-500 hover:bg-orange-600 text-white font-medium rounded-lg transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] shadow-sm hover:shadow">
-            {% include 'icons/refresh_icon.html' with size="18" class="mr-2" %}
-            Reiniciar Puerto
-        </button>
-    </form>
+        <!-- URLs Section -->
+        <div class="space-y-3 mb-4">
+            <!-- Input Section -->
+            <div class="bg-green-50 border border-green-200 rounded-lg p-3">
+                <div class="flex items-center gap-2 mb-2">
+                    {% include 'icons/arrow_input_icon.html' with size="16" class="text-green-600 shrink-0" %}
+                    <label class="text-xs font-bold text-green-800 uppercase">Input</label>
+                </div>
+                
+                <!-- URL Base -->
+                <div class="mb-2">
+                    <label class="text-xs text-green-700 font-semibold mb-1 block">URL</label>
+                    <div class="flex items-center gap-2">
+                        <code class="text-xs text-green-900 bg-white px-2 py-1.5 rounded border border-green-300 flex-1 overflow-x-auto whitespace-nowrap" x-text="inputBaseUrl"></code>
+                        <button @click="copyToClipboard(inputBaseUrl, 'input')" 
+                                class="shrink-0 p-1.5 hover:bg-green-100 rounded transition-colors" 
+                                title="Copiar URL">
+                            <span x-show="!copied.input">
+                                {% include 'icons/copy_icon.html' with size="16" class="text-green-700" %}
+                            </span>
+                            <span x-show="copied.input" x-cloak>
+                                {% include 'icons/check_icon.html' with size="16" class="text-green-600" %}
+                            </span>
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Stream ID -->
+                <div>
+                    <label class="text-xs text-green-700 font-semibold mb-1 block">Stream ID</label>
+                    <div class="flex items-center gap-2">
+                        <code class="text-xs text-green-900 bg-white px-2 py-1.5 rounded border border-green-300 flex-1 overflow-x-auto whitespace-nowrap" x-text="inputStreamId"></code>
+                        <button @click="copyToClipboard(inputStreamId, 'inputStreamId')" 
+                                class="shrink-0 p-1.5 hover:bg-green-100 rounded transition-colors" 
+                                title="Copiar Stream ID">
+                            <span x-show="!copied.inputStreamId">
+                                {% include 'icons/copy_icon.html' with size="16" class="text-green-700" %}
+                            </span>
+                            <span x-show="copied.inputStreamId" x-cloak>
+                                {% include 'icons/check_icon.html' with size="16" class="text-green-600" %}
+                            </span>
+                        </button>
+                    </div>
+                </div>
+                
+                <p class="text-xs text-green-700 mt-2">📱 CameraFi Live / IRLToolkit</p>
+            </div>
+
+            <!-- Output Section -->
+            <div class="bg-purple-50 border border-purple-200 rounded-lg p-3">
+                <div class="flex items-center gap-2 mb-2">
+                    {% include 'icons/arrow_right_icon.html' with size="16" class="text-purple-600 shrink-0" %}
+                    <label class="text-xs font-bold text-purple-800 uppercase">Output</label>
+                </div>
+                
+                <!-- URL Base -->
+                <div class="mb-2">
+                    <label class="text-xs text-purple-700 font-semibold mb-1 block">URL</label>
+                    <div class="flex items-center gap-2">
+                        <code class="text-xs text-purple-900 bg-white px-2 py-1.5 rounded border border-purple-300 flex-1 overflow-x-auto whitespace-nowrap" x-text="outputBaseUrl"></code>
+                        <button @click="copyToClipboard(outputBaseUrl, 'output')" 
+                                class="shrink-0 p-1.5 hover:bg-purple-100 rounded transition-colors" 
+                                title="Copiar URL">
+                            <span x-show="!copied.output">
+                                {% include 'icons/copy_icon.html' with size="16" class="text-purple-700" %}
+                            </span>
+                            <span x-show="copied.output" x-cloak>
+                                {% include 'icons/check_icon.html' with size="16" class="text-purple-600" %}
+                            </span>
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Stream ID -->
+                <div>
+                    <label class="text-xs text-purple-700 font-semibold mb-1 block">Stream ID</label>
+                    <div class="flex items-center gap-2">
+                        <code class="text-xs text-purple-900 bg-white px-2 py-1.5 rounded border border-purple-300 flex-1 overflow-x-auto whitespace-nowrap" x-text="outputStreamId"></code>
+                        <button @click="copyToClipboard(outputStreamId, 'outputStreamId')" 
+                                class="shrink-0 p-1.5 hover:bg-purple-100 rounded transition-colors" 
+                                title="Copiar Stream ID">
+                            <span x-show="!copied.outputStreamId">
+                                {% include 'icons/copy_icon.html' with size="16" class="text-purple-700" %}
+                            </span>
+                            <span x-show="copied.outputStreamId" x-cloak>
+                                {% include 'icons/check_icon.html' with size="16" class="text-purple-600" %}
+                            </span>
+                        </button>
+                    </div>
+                </div>
+                
+                <p class="text-xs text-purple-700 mt-2">📺 Para reproducir el stream</p>
+            </div>
+        </div>
+
+        <!-- Acción de reinicio -->
+        <form action="{% url 'port_restart' port.client_name port.port_number %}" method="post" class="flex justify-end">
+            {% csrf_token %}
+            <div class="">
+                <button type="submit" class="btn-primary w-9 h-9">
+                    {% include 'icons/refresh_icon.html' with size="16" %}
+                </button>
+            </div>
+        </form>
+    </div>
 </div>

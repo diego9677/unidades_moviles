@@ -75,7 +75,7 @@
                             <option value="">-- Seleccione un cliente --</option>
                             {% for client in clients %}
                                 <option value="{{ client.pk }}" {% if selected_client and selected_client.pk == client.pk %}selected{% endif %}>
-                                    {{ client.name }} ({{ client.user.username }})
+                                    {{ client.username }}
                                 </option>
                             {% endfor %}
                         </select>
@@ -84,11 +84,11 @@
                     <!-- Tarjetas de Puertos -->
                     {% if selected_client %}
                         <h3 class="text-lg font-semibold text-gray-700 mb-4">
-                            Puertos de: <span class="text-blue-600">{{ selected_client.name }}</span>
+                            Puertos de: <span class="text-blue-600">{{ selected_client.username }}</span>
                         </h3>
                         
                         {% if ports_info %}
-                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                            <div class="flex flex-wrap gap-6">
                                 {% for port in ports_info %}
                                     {% include 'components/port_card.html' with port=port %}
                                 {% endfor %}
@@ -110,12 +110,12 @@
                         <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
                             <div class="flex items-center">
                                 {% include 'icons/users_icon.html' with size="20" class="text-blue-600 mr-2" %}
-                                <span class="text-sm font-medium text-blue-800">Cliente: {{ client.name }}</span>
+                                <span class="text-sm font-medium text-blue-800">Cliente: {{ client.username }}</span>
                             </div>
                         </div>
 
                         {% if ports_info %}
-                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                            <div class="flex flex-wrap gap-6">
                                 {% for port in ports_info %}
                                     {% include 'components/port_card.html' with port=port %}
                                 {% endfor %}
