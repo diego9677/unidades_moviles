@@ -7,6 +7,7 @@
          inputUrl: 'srt://{{ port.host }}:{{ port.port_number }}/streamid=/input/live/movil{{ port.mobile_index }}',
          outputUrl: 'srt://{{ port.host }}:{{ port.port_number }}/streamid=/output/live/movil{{ port.mobile_index }}',
          iframeUrl: 'https://{{ port.host }}/{{ port.client_name }}/movil{{ port.mobile_index }}/',
+         whepUrl: '/whep-proxy/{{ port.client_name }}/movil{{ port.mobile_index }}/whep',
          updateDimensions() {
              const container = this.$refs.placeholder;
              if (container) {

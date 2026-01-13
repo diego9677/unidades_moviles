@@ -1,0 +1,61 @@
+services:
+  db:
+    image: postgres:15-alpine
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_DB=unidades_moviles
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    restart: always
+
+  web:
+    build: .
+    command: uvicorn config.asgi:application --host 0.0.0.0 --port 8000 --reload
+    volumes:
+      - .:/app
+    environment:
+      - DEBUG=True
+      - SECRET_KEY=django-insecure-docker-hardcoded-key-12345
+      - ALLOWED_HOSTS=*
+      - DATABASE_ENGINE=django.db.backends.postgresql
+      - DATABASE_NAME=unidades_moviles
+      - DATABASE_USER=postgres
+      - DATABASE_PASSWORD=postgres
+      - DATABASE_HOST=db
+      - DATABASE_PORT=5432
+      - STATIC_ROOT=/app/static_root
+      - MEDIA_ROOT=/app/media_root
+    depends_on:
+      - db
+
+  tailwindcss:
+    image: node:20-alpine
+    working_dir: /app/templates
+    volumes:
+      - ./templates:/app/templates
+      - ./core:/app/core
+    command: sh -c "npm install && npm run dev"
+
+  nginx:
+    image: nginx:stable-alpine
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/templates:/etc/nginx/templates
+      # En desarrollo, montamos los estáticos generados por Django/Tailwind
+      # Nota: Si uvicorn sirve estáticos en DEBUG, nginx podría no necesitarlos para /static/
+      # pero si nginx sirve /static/, necesita acceso a ellos.
+      # Mapeamos la carpeta donde Tailwind escribe el CSS y Django sus assets.
+      - ./core/static:/app/static_root/core
+    environment:
+      # Reemplaza esto con la URL base de tu servidor Vmix. 
+      # Ejemplo: http://192.168.1.50:8888
+      - VMIX_HOST=${VMIX_HOST:-http://vmix_placeholder:8888} 
+    depends_on:
+      - web
+
+volumes:
+  postgres_data:
+  static_volume:
+  media_volume:

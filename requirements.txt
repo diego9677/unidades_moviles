@@ -4,8 +4,6 @@ django-extensions==4.1
 django-widget-tweaks==1.5.0
 sqlparse==0.5.3
 paramiko==4.0.0
-<<<<<<< HEAD
 requests==2.32.5
-=======
-requests==2.31.0
->>>>>>> 834b8edc32cf78824d58ed1022952624e0f40b66
+psycopg2-binary==2.9.9
+uvicorn==0.23.2
