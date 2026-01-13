@@ -7,7 +7,7 @@ from django.shortcuts import redirect
 from django.http import HttpResponseRedirect
 import logging
 
-from core.models import Client, User
+from core.models import User
 from core.forms import ClientCreateForm, ClientUpdateForm
 # from core.services import client_ssh_service
 from core.services import client_api_service
@@ -16,27 +16,23 @@ logger = logging.getLogger(__name__)
 
 
 class ClientListView(LoginRequiredMixin, ListView):
-    model = Client
+    model = User
     template_name = 'core/client_list.html'
     context_object_name = 'clients'
 
+    def get_queryset(self):
+        return User.objects.filter(role='client').select_related('server').prefetch_related('assigned_ports')
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        # Procesar la lista de puertos para cada cliente
+        # Procesar la lista de puertos para cada cliente desde assigned_ports
         for client in context['clients']:
-            if client.port_list:
-                try:
-                    # Convertir "1001, 1002" -> [1001, 1002]
-                    client.ports_parsed = [int(p.strip()) for p in client.port_list.split(',') if p.strip()]
-                except ValueError:
-                    client.ports_parsed = []
-            else:
-                client.ports_parsed = []
+            client.ports_parsed = list(client.assigned_ports.order_by('port_number').values_list('port_number', flat=True))
         return context
 
 
 class ClientCreateView(LoginRequiredMixin, CreateView):
-    model = Client
+    model = User
     form_class = ClientCreateForm
     template_name = 'core/client_form.html'
     success_url = reverse_lazy('client_list')
@@ -44,21 +40,20 @@ class ClientCreateView(LoginRequiredMixin, CreateView):
     def form_valid(self, form):
         try:
             with transaction.atomic():
-                # 1. Crear usuario de Django
+                # 1. Crear usuario con rol de cliente
                 username = form.cleaned_data['username']
                 password = form.cleaned_data['password']
-                user = User.objects.create_user(username=username, password=password)
+                server = form.cleaned_data.get('server')
 
-                # 2. Preparar datos para el cliente
-                self.object = form.save(commit=False)
-                self.object.user = user
+                self.object = User.objects.create_user(
+                    username=username,
+                    password=password,
+                    role='client',
+                    server=server
+                )
 
-                # 3. Guardar el cliente primero (necesario para asignar relaciones)
-                self.object.save()
-
-                # 4. Obtener puertos disponibles (AUTO-ASSIGN)
+                # 2. Obtener puertos disponibles (AUTO-ASSIGN)
                 num_ports = form.cleaned_data['num_ports']
-                server = self.object.server
 
                 if server:
                     # LOCK & FETCH PORTS
@@ -77,19 +72,16 @@ class ClientCreateView(LoginRequiredMixin, CreateView):
                         port_obj.assigned_client = self.object
                         port_obj.save()
 
-                    # UPDATE CLIENT MODEL (como string csv, legacy support)
-                    self.object.port_list = ", ".join(map(str, ports))
-                    self.object.save()
-
                     # EXECUTE API
                     api_service = client_api_service.get_api_service(server)
-                    response = api_service.create_client(self.object.name, ports)
+                    response = api_service.create_client(self.object.username, ports)
                     logger.info(f"API Response for create client: {response}")
+                    
+                    messages.success(self.request, f"Cliente {self.object.username} creado exitosamente con {len(ports)} puertos")
                 else:
-                    logger.warning(f"Cliente {self.object.name} creado sin servidor asignado. No se generaron puertos ni SSH.")
-                    self.object.save()
+                    logger.warning(f"Cliente {self.object.username} creado sin servidor asignado. No se generaron puertos.")
+                    messages.success(self.request, f"Cliente {self.object.username} creado exitosamente sin servidor")
 
-                messages.success(self.request, f"Cliente {self.object.name} creado exitosamente con puertos: {self.object.port_list}")
                 return super().form_valid(form)
 
         except ValueError as ve:
@@ -106,10 +98,13 @@ class ClientCreateView(LoginRequiredMixin, CreateView):
 
 
 class ClientUpdateView(LoginRequiredMixin, UpdateView):
-    model = Client
+    model = User
     form_class = ClientUpdateForm
     template_name = 'core/client_form.html'
     success_url = reverse_lazy('client_list')
+
+    def get_queryset(self):
+        return User.objects.filter(role='client')
 
     def form_valid(self, form):
         messages.success(self.request, "Cliente actualizado localmente.")
@@ -117,39 +112,36 @@ class ClientUpdateView(LoginRequiredMixin, UpdateView):
 
 
 class ClientDeleteView(LoginRequiredMixin, DeleteView):
-    model = Client
+    model = User
     template_name = 'core/client_confirm_delete.html'
     success_url = reverse_lazy('client_list')
 
+    def get_queryset(self):
+        return User.objects.filter(role='client')
+
     def form_valid(self, form):
-        client_name = self.object.name
-        user_id = self.object.user_id  # Guardamos el ID para asegurar borrado
+        username = self.object.username
         success_url = self.get_success_url()
 
         try:
-            # 1. Llamar a SSH para eliminar
+            # 1. Llamar a API para eliminar
             if self.object.server:
-                # Liberar puertos en DB antes (o despues, pero dentro de try)
+                # Liberar puertos en DB
                 self.object.assigned_ports.update(is_available=True, assigned_client=None)
 
                 api_service = client_api_service.get_api_service(self.object.server)
-                api_service.delete_client(client_name)
+                api_service.delete_client(username)
             else:
                 logger.warning("Eliminando cliente sin servidor asignado, omitiendo API.")
 
             # 2. Eliminar de BD local
             try:
                 with transaction.atomic():
-                    # Borramos el usuario directamente por ID.
-                    if user_id:
-                        deleted_count, _ = User.objects.filter(pk=user_id).delete()
-                        logger.info(f"Usuario asociado {user_id} eliminado. Registros afectados: {deleted_count}")
-
-                    if Client.objects.filter(pk=self.object.pk).exists():
+                    if User.objects.filter(pk=self.object.pk).exists():
                         self.object.delete()
-                        logger.info(f"Cliente local {client_name} eliminado explícitamente.")
+                        logger.info(f"Usuario {username} eliminado exitosamente.")
 
-                messages.success(self.request, f"Cliente {client_name} y su usuario eliminados correctamente.")
+                messages.success(self.request, f"Cliente {username} eliminado correctamente.")
                 return HttpResponseRedirect(success_url)
 
             except Exception as local_e:
@@ -159,13 +151,11 @@ class ClientDeleteView(LoginRequiredMixin, DeleteView):
 
         except client_api_service.APIException as e:
             messages.warning(self.request, f"Advertencia: El cliente fue eliminado localmente, pero hubo un error en el servidor remoto: {str(e)}")
-            logger.error(f"Error API al eliminar {client_name}: {str(e)}")
+            logger.error(f"Error API al eliminar {username}: {str(e)}")
 
             try:
                 with transaction.atomic():
-                    if user_id:
-                        User.objects.filter(pk=user_id).delete()
-                    if Client.objects.filter(pk=self.object.pk).exists():
+                    if User.objects.filter(pk=self.object.pk).exists():
                         self.object.delete()
 
                 return HttpResponseRedirect(success_url)
@@ -181,7 +171,7 @@ class ClientDeleteView(LoginRequiredMixin, DeleteView):
 class ClientActionView(LoginRequiredMixin, View):
     def post(self, request, client_name, action):
         try:
-            client = Client.objects.get(name=client_name)
+            client = User.objects.get(username=client_name, role='client')
             if client.server:
                 api_service = client_api_service.get_api_service(client.server)
 
@@ -208,7 +198,7 @@ class ClientActionView(LoginRequiredMixin, View):
 class PortRestartView(LoginRequiredMixin, View):
     def post(self, request, client_name, port):
         try:
-            client = Client.objects.get(name=client_name)
+            client = User.objects.get(username=client_name, role='client')
             if client.server:
                 api_service = client_api_service.get_api_service(client.server)
                 api_service.restart_port(client_name, port)
@@ -220,3 +210,4 @@ class PortRestartView(LoginRequiredMixin, View):
             messages.error(request, f"Error al reiniciar puerto: {str(e)}")
 
         return redirect('client_list')
+

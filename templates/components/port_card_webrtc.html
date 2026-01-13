@@ -1,0 +1,264 @@
+{% load static %}
+
+<div class="bg-white rounded-lg border border-gray-200 shadow-md hover:shadow-lg transition-all duration-300 overflow-hidden w-[420px]"
+     x-data="{
+         dimensions: '420x236 px',
+         copied: { input: false, output: false },
+         inputUrl: 'srt://{{ port.host }}:{{ port.port_number }}/streamid=/input/live/movil{{ port.mobile_index }}',
+         outputUrl: 'srt://{{ port.host }}:{{ port.port_number }}/streamid=/output/live/movil{{ port.mobile_index }}',
+         iframeUrl: 'https://{{ port.host }}/{{ port.client_name }}/movil{{ port.mobile_index }}/',
+         updateDimensions() {
+             const container = this.$refs.placeholder;
+             if (container) {
+                 this.dimensions = container.offsetWidth + 'x' + container.offsetHeight + ' px';
+             }
+         },
+         copyToClipboard(text, type) {
+             navigator.clipboard.writeText(text).then(() => {
+                 this.copied[type] = true;
+                 setTimeout(() => {
+                     this.copied[type] = false;
+                 }, 2000);
+             });
+         },
+         connectWebRTC() {
+             if (this.isConnecting || this.isConnected) return;
+             
+             this.isConnecting = true;
+             this.hasError = false;
+             this.errorMessage = '';
+             
+             try {
+                 // Usar la librería MediaMTXWebRTCReader
+                 this.reader = new MediaMTXWebRTCReader({
+                     url: this.whepUrl,
+                     onError: (err) => {
+                         console.error('MediaMTX Error:', err);
+                         
+                         // Si ya estamos conectados y reproduciendo, ignorar errores de PATCH
+                         if (this.isConnected && err.includes('Failed to fetch')) {
+                             console.warn('Error ignorado - video ya está reproduciendo');
+                             return;
+                         }
+                         
+                         this.hasError = true;
+                         this.errorMessage = 'Error al conectar';
+                         this.isConnecting = false;
+                         this.isConnected = false;
+                         
+                         // Intentar reconectar
+                         if (this.reconnectAttempts < this.maxReconnectAttempts) {
+                             this.reconnectAttempts++;
+                             setTimeout(() => this.connectWebRTC(), 3000);
+                         }
+                     },
+                     onTrack: (evt) => {
+                         console.log('Track recibido:', evt.track.kind);
+                         
+                         const video = this.$refs.videoElement;
+                         
+                         if (video && evt.streams && evt.streams[0]) {
+                             // Solo asignar el stream una vez
+                             if (!this.mediaStream) {
+                                 this.mediaStream = evt.streams[0];
+                                 video.srcObject = this.mediaStream;
+                                 console.log('Stream asignado al video');
+                                 
+                                 // Esperar a que el video esté listo antes de reproducir
+                                 video.onloadedmetadata = () => {
+                                     console.log('Metadata cargada, intentando reproducir');
+                                     video.play().then(() => {
+                                         console.log('Video playing exitosamente');
+                                         this.isConnected = true;
+                                         this.isConnecting = false;
+                                         this.reconnectAttempts = 0;
+                                     }).catch(err => {
+                                         console.error('Error al reproducir video:', err);
+                                     });
+                                 };
+                             } else {
+                                 console.log('Stream ya asignado, ignorando track adicional');
+                             }
+                         }
+                     },
+                 });
+             } catch (error) {
+                 console.error('Error al inicializar MediaMTX:', error);
+                 this.hasError = true;
+                 this.errorMessage = 'Error al inicializar';
+                 this.isConnecting = false;
+             }
+         },
+         disconnect() {
+             if (this.reconnectInterval) {
+                 clearInterval(this.reconnectInterval);
+             }
+             
+             if (this.reader) {
+                 this.reader.close();
+                 this.reader = null;
+             }
+             
+             const video = this.$refs.videoElement;
+             if (video) {
+                 video.srcObject = null;
+             }
+             
+             this.mediaStream = null;
+             this.isConnected = false;
+             this.isConnecting = false;
+         },
+         startAutoReconnect() {
+             {% if not port.is_available %}
+             // Verificar conexión cada 30 segundos
+             this.reconnectInterval = setInterval(() => {
+                 if (!this.isConnected && !this.isConnecting) {
+                     this.reconnectAttempts = 0;
+                     this.connectWebRTC();
+                 }
+             }, 30000);
+             {% endif %}
+         }
+     }"
+     x-init="
+         updateDimensions();
+         window.addEventListener('resize', () => updateDimensions());
+         {% if not port.is_available %}
+         // Esperar a que MediaMTXWebRTCReader esté disponible
+         if (typeof MediaMTXWebRTCReader !== 'undefined') {
+             connectWebRTC();
+             startAutoReconnect();
+         } else {
+             window.addEventListener('load', () => {
+                 connectWebRTC();
+                 startAutoReconnect();
+             });
+         }
+         {% endif %}
+     ">
+    <!-- Video Player con WebRTC Nativo -->
+    <div x-ref="placeholder" class="relative bg-gray-900 group aspect-video overflow-hidden">
+        {% if not port.is_available %}
+            <!-- Video element para WebRTC -->
+            <video 
+                x-ref="videoElement"
+                autoplay
+                muted
+                playsinline
+                controls
+                class="absolute inset-0 w-full h-full object-cover bg-black">
+            </video>
+            
+            <!-- Connecting overlay -->
+            <div x-show="isConnecting" 
+                 x-cloak
+                 class="absolute inset-0 bg-black/70 flex items-center justify-center z-20">
+                <div class="text-center">
+                    {% include 'icons/loading_spinner_icon.html' with size="48" class="animate-spin mx-auto mb-3 text-blue-500" %}
+                    <p class="text-white text-sm font-medium">Conectando...</p>
+                </div>
+            </div>
+            
+            <!-- Error overlay -->
+            <div x-show="hasError && !isConnecting" 
+                 x-cloak
+                 class="absolute inset-0 bg-gradient-to-br from-gray-700 to-gray-800 flex items-center justify-center z-20">
+                <div class="text-center">
+                    {% include 'icons/error_icon.html' with size="64" class="mx-auto mb-4 text-red-500" %}
+                    <p class="text-white text-xl font-bold mb-2">Error de Conexión</p>
+                    <p class="text-gray-400 text-sm" x-text="errorMessage"></p>
+                    <button @click="reconnectAttempts = 0; connectWebRTC()" 
+                            class="mt-4 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded transition-colors">
+                        Reintentar
+                    </button>
+                </div>
+            </div>
+        {% else %}
+            <!-- Mensaje de Fuera de Línea -->
+            <div class="absolute inset-0 bg-gradient-to-br from-gray-700 to-gray-800 flex items-center justify-center">
+                <div class="text-center">
+                    {% include 'icons/offline_icon.html' with size="64" class="mx-auto mb-4 text-gray-500" %}
+                    <p class="text-white text-xl font-bold mb-2">Fuera de Línea</p>
+                    <p class="text-gray-400 text-sm">movil{{ port.mobile_index }}</p>
+                    <p class="text-gray-500 text-xs mt-2" x-text="dimensions"></p>
+                </div>
+            </div>
+        {% endif %}
+        
+        <!-- Status badge -->
+        <div class="absolute top-3 right-3 z-10">
+            <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold backdrop-blur-sm {% if not port.is_available %}bg-red-500/90 text-white{% else %}bg-gray-600/90 text-white{% endif %}">
+                {% if not port.is_available %}● LIVE{% else %}○ OFF{% endif %}
+            </span>
+        </div>
+    </div>
+
+    <!-- Content -->
+    <div class="p-4">
+        <!-- Header -->
+        <div class="mb-4">
+            <h3 class="text-lg font-bold text-gray-800 flex items-center gap-2">
+                {% include 'icons/video_camera_icon.html' with size="20" class="text-blue-600" %}
+                movil{{ port.mobile_index }}
+            </h3>
+            <p class="text-sm text-gray-500">Puerto: {{ port.port_number }}</p>
+        </div>
+
+        <!-- URLs Section -->
+        <div class="space-y-3 mb-4">
+            <!-- Input URL -->
+            <div class="bg-green-50 border border-green-200 rounded-lg p-3">
+                <div class="flex items-center gap-2 mb-1">
+                    {% include 'icons/arrow_input_icon.html' with size="16" class="text-green-600 flex-shrink-0" %}
+                    <label class="text-xs font-bold text-green-800 uppercase">Input URL</label>
+                </div>
+                <div class="flex items-center gap-2">
+                    <code class="text-xs text-green-900 bg-white px-2 py-1.5 rounded border border-green-300 flex-1 overflow-x-auto whitespace-nowrap" x-text="inputUrl"></code>
+                    <button @click="copyToClipboard(inputUrl, 'input')" 
+                            class="flex-shrink-0 p-1.5 hover:bg-green-100 rounded transition-colors" 
+                            title="Copiar">
+                        <span x-show="!copied.input">
+                            {% include 'icons/copy_icon.html' with size="16" class="text-green-700" %}
+                        </span>
+                        <span x-show="copied.input" x-cloak>
+                            {% include 'icons/check_icon.html' with size="16" class="text-green-600" %}
+                        </span>
+                    </button>
+                </div>
+                <p class="text-xs text-green-700 mt-1.5">📱 CameraFi Live / IRLToolkit</p>
+            </div>
+
+            <!-- Output URL -->
+            <div class="bg-purple-50 border border-purple-200 rounded-lg p-3">
+                <div class="flex items-center gap-2 mb-1">
+                    {% include 'icons/arrow_right_icon.html' with size="16" class="text-purple-600 flex-shrink-0" %}
+                    <label class="text-xs font-bold text-purple-800 uppercase">Output URL</label>
+                </div>
+                <div class="flex items-center gap-2">
+                    <code class="text-xs text-purple-900 bg-white px-2 py-1.5 rounded border border-purple-300 flex-1 overflow-x-auto whitespace-nowrap" x-text="outputUrl"></code>
+                    <button @click="copyToClipboard(outputUrl, 'output')" 
+                            class="flex-shrink-0 p-1.5 hover:bg-purple-100 rounded transition-colors" 
+                            title="Copiar">
+                        <span x-show="!copied.output">
+                            {% include 'icons/copy_icon.html' with size="16" class="text-purple-700" %}
+                        </span>
+                        <span x-show="copied.output" x-cloak>
+                            {% include 'icons/check_icon.html' with size="16" class="text-purple-600" %}
+                        </span>
+                    </button>
+                </div>
+                <p class="text-xs text-purple-700 mt-1.5">📺 Para reproducir el stream</p>
+            </div>
+        </div>
+
+        <!-- Acción de reinicio -->
+        <form action="{% url 'port_restart' port.client_name port.port_number %}" method="post" class="flex justify-end">
+            {% csrf_token %}
+            <div class="">
+                <button type="submit" class="btn-primary w-9 h-9">
+                    {% include 'icons/refresh_icon.html' with size="16" %}
+                </button>
+            </div>
+        </form>
+    </div>
+</div>

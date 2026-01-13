@@ -18,6 +18,15 @@ class User(AbstractUser):
 
     role = models.CharField(max_length=50, choices=ROLE_CHOICES, null=True, blank=True, verbose_name='Rol')
 
+    server = models.ForeignKey(
+        "core.Server",
+        on_delete=models.SET_NULL,  # Or CASCADE/PROTECT depending on reqs, SET_NULL safer for now
+        null=True,
+        blank=True,
+        related_name="clients",
+        verbose_name="Servidor Asignado"
+    )
+
     class Meta:
         verbose_name = 'Usuario'
         verbose_name_plural = 'Usuarios'

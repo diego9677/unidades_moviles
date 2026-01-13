@@ -21,7 +21,7 @@ urlpatterns = [
     path('clients/<int:pk>/delete/', ClientDeleteView.as_view(), name='client_delete'),
     path('clients/<str:client_name>/action/<str:action>/', ClientActionView.as_view(), name='client_action'),
     path('clients/<str:client_name>/ports/<int:port>/restart/', PortRestartView.as_view(), name='port_restart'),
-    
+
     # Server URLs
     path('servers/', ServerListView.as_view(), name='server_list'),
     path('servers/add/', ServerCreateView.as_view(), name='server_add'),

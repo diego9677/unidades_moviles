@@ -1,6 +1,6 @@
 from django.views.generic import TemplateView
 from django.contrib.auth.mixins import LoginRequiredMixin
-from core.models import Client
+from core.models import User
 
 
 class HomeView(LoginRequiredMixin, TemplateView):
@@ -16,7 +16,7 @@ class HomeView(LoginRequiredMixin, TemplateView):
 
         if is_admin:
             # Lógica para administradores
-            clients = Client.objects.select_related('server', 'user').all()
+            clients = User.objects.filter(role='client').select_related('server').all()
             context['clients'] = clients
 
             # Obtener cliente seleccionado desde parámetro GET
@@ -26,9 +26,9 @@ class HomeView(LoginRequiredMixin, TemplateView):
 
             if selected_client_id:
                 try:
-                    selected_client = Client.objects.select_related('server').get(pk=selected_client_id)
+                    selected_client = User.objects.select_related('server').get(pk=selected_client_id, role='client')
                     ports_info = self._get_ports_info(selected_client)
-                except Client.DoesNotExist:
+                except User.DoesNotExist:
                     pass
 
             context['selected_client'] = selected_client
@@ -37,10 +37,10 @@ class HomeView(LoginRequiredMixin, TemplateView):
         else:
             # Lógica para clientes
             try:
-                client = Client.objects.select_related('server').get(user=user)
+                client = User.objects.select_related('server').get(pk=user.pk, role='client')
                 context['client'] = client
                 context['ports_info'] = self._get_ports_info(client)
-            except Client.DoesNotExist:
+            except User.DoesNotExist:
                 context['client'] = None
                 context['ports_info'] = []
 
@@ -58,13 +58,14 @@ class HomeView(LoginRequiredMixin, TemplateView):
         # Obtener puertos asignados desde la relación assigned_ports
         assigned_ports = client.assigned_ports.select_related('server').order_by('port_number')
 
-        for port in assigned_ports:
+        for index, port in enumerate(assigned_ports, start=1):
             ports_info.append({
                 'port_number': port.port_number,
                 'host': port.server.host,
-                'client_name': client.name,
+                'client_name': client.username,
                 'is_available': port.is_available,
                 'server_name': str(port.server),
+                'mobile_index': index,  # movil1, movil2, movil3, etc.
             })
 
         return ports_info
