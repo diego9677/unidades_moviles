@@ -1,8 +1,43 @@
+# Entorno virtual y archivos de configuración
 .venv
+.env
+.env.local
+.env.*.local
+
+# Python
 __pycache__
 *.pyc
-.DS_Store
-.env
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Django
 db.sqlite3
+db.sqlite3-journal
+*.log
+local_settings.py
+/static_root/
+/media_root/
+*.pot
+
+# Node
 **/node_modules
-**/__pycache__
+npm-debug.log*
+
+# Sistema
+.DS_Store
+Thumbs.db
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Certificados SSL (se generan automáticamente)
+nginx/ssl/*.crt
+nginx/ssl/*.key
+!nginx/ssl/.gitkeep
+

@@ -2,15 +2,63 @@ upstream django_app {
     server web:8000;
 }
 
+# Resolver dinámico para evitar fallos al arranque si el upstream no existe
+resolver 127.0.0.11 valid=30s;
+
 server {
     listen 80;
+    server_name localhost;
 
+    # Redirigir HTTP a HTTPS
+    return 301 https://$server_name$request_uri;
+}
+
+server {
+    listen 443 ssl;
+    http2 on;
+    server_name localhost;
+
+    # Certificados SSL
+    ssl_certificate /etc/nginx/ssl/localhost.crt;
+    ssl_certificate_key /etc/nginx/ssl/localhost.key;
+
+    # Configuración SSL moderna y segura
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers HIGH:!aNULL:!MD5;
+    ssl_prefer_server_ciphers on;
+
+    # Tamaño máximo de subida
+    client_max_body_size 100M;
+
+    # Archivos estáticos - Django collectstatic
     location /static/ {
         alias /app/static_root/;
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+        
+        # Headers de seguridad
+        add_header X-Content-Type-Options "nosniff" always;
+        add_header X-Frame-Options "SAMEORIGIN" always;
+        
+        # Logs para debugging
+        access_log /var/log/nginx/static-access.log;
+        error_log /var/log/nginx/static-error.log;
+        
+        # Intenta servir el archivo, si no existe, error 404
+        try_files $uri $uri/ =404;
     }
 
+    # Archivos media
     location /media/ {
         alias /app/media_root/;
+        expires 30d;
+        add_header Cache-Control "public";
+        
+        # Headers de seguridad
+        add_header X-Content-Type-Options "nosniff" always;
+        add_header X-Frame-Options "SAMEORIGIN" always;
+        
+        try_files $uri $uri/ =404;
     }
 
     location / {
@@ -19,16 +67,26 @@ server {
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
+        
+        # WebSocket support
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        
+        # Timeouts para conexiones largas
+        proxy_read_timeout 86400;
+        proxy_send_timeout 86400;
     }
 
     # Proxy para WHEP (WebRTC HTTP Egress Protocol)
     # Permite acceso CORS para el cliente web
-    location /whep-proxy/ {
+    # Ejemplo de URL: https://localhost/usuario/movil1/whep
+    location ~ ^/(.+)/whep$ {
         # Configuración CORS
         if ($request_method = 'OPTIONS') {
             add_header 'Access-Control-Allow-Origin' '*' always;
-            add_header 'Access-Control-Allow-Methods' 'GET, POST, OPTIONS' always;
-            add_header 'Access-Control-Allow-Headers' 'DNT,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range,Authorization' always;
+            add_header 'Access-Control-Allow-Methods' 'GET, POST, PATCH, DELETE, OPTIONS' always;
+            add_header 'Access-Control-Allow-Headers' 'DNT,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range,Authorization,Content-Type' always;
             add_header 'Access-Control-Max-Age' 1728000;
             add_header 'Content-Type' 'text/plain; charset=utf-8';
             add_header 'Content-Length' 0;
@@ -36,20 +94,33 @@ server {
         }
 
         add_header 'Access-Control-Allow-Origin' '*' always;
-        add_header 'Access-Control-Allow-Methods' 'GET, POST, OPTIONS' always;
-        add_header 'Access-Control-Allow-Headers' 'DNT,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range,Authorization' always;
-        add_header 'Access-Control-Expose-Headers' 'Content-Length,Content-Range' always;
+        add_header 'Access-Control-Allow-Methods' 'GET, POST, PATCH, DELETE, OPTIONS' always;
+        add_header 'Access-Control-Allow-Headers' 'DNT,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range,Authorization,Content-Type' always;
+        add_header 'Access-Control-Expose-Headers' 'Content-Length,Content-Range,Location' always;
 
-        # Proxy hacia el servidor Vmix
-        # La solicitud /whep-proxy/foo/bar se enviará a ${VMIX_HOST}/foo/bar
-        # Importante: VMIX_HOST no debe tener slash al final si se quiere comportamiento normal, 
-        # pero con proxy_pass sin URI, nginx pasa la URI original.
-        # Para quitar el prefijo /whep-proxy/ usamos un slash al final del proxy_pass.
-        proxy_pass ${VMIX_HOST}/;
+        # Variable para el host dinámico
+        set $vmix_backend "${VMIX_HOST}";
         
+        # Proxy hacia el servidor Vmix/MediaMTX
+        # La solicitud /usuario/movil1/whep se enviará a ${VMIX_HOST}/usuario/movil1/whep
+        proxy_pass $vmix_backend;
+        
+        # WebRTC/WebSocket support
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection "upgrade";
-        proxy_set_header Host $host;
+        proxy_set_header Host $http_host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        
+        # Timeouts para WebRTC
+        proxy_read_timeout 86400;
+        proxy_send_timeout 86400;
+        proxy_connect_timeout 60s;
+        
+        # Buffering desactivado para streaming
+        proxy_buffering off;
+        proxy_request_buffering off;
     }
 }

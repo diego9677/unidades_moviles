@@ -29,6 +29,9 @@ DEBUG = os.getenv('DEBUG', 'True') == 'True'
 
 ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '*').split(',')
 
+# CSRF settings for HTTPS
+CSRF_TRUSTED_ORIGINS = os.getenv('CSRF_TRUSTED_ORIGINS', 'https://localhost,https://127.0.0.1').split(',')
+
 # settings.py
 AUTH_USER_MODEL = 'core.User'
 
@@ -132,9 +135,15 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
-STATIC_URL = 'static/'
+STATIC_URL = '/static/'
 STATIC_ROOT = os.getenv('STATIC_ROOT', BASE_DIR / 'static_root')
-MEDIA_URL = 'media/'
+
+# Directorios adicionales donde Django busca archivos estáticos
+STATICFILES_DIRS = [
+    BASE_DIR / 'core' / 'static',
+]
+
+MEDIA_URL = '/media/'
 MEDIA_ROOT = os.getenv('MEDIA_ROOT', BASE_DIR / 'media_root')
 
 # Default primary key field type

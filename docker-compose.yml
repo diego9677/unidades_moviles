@@ -1,12 +1,12 @@
 services:
   db:
-    image: postgres:15-alpine
+    image: postgres:16-alpine
     volumes:
       - postgres_data:/var/lib/postgresql/data
     environment:
-      - POSTGRES_DB=unidades_moviles
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
     restart: always
 
   web:
@@ -14,18 +14,21 @@ services:
     command: uvicorn config.asgi:application --host 0.0.0.0 --port 8000 --reload
     volumes:
       - .:/app
+      - static_volume:/app/static_root
+      - media_volume:/app/media_root
     environment:
-      - DEBUG=True
-      - SECRET_KEY=django-insecure-docker-hardcoded-key-12345
-      - ALLOWED_HOSTS=*
-      - DATABASE_ENGINE=django.db.backends.postgresql
-      - DATABASE_NAME=unidades_moviles
-      - DATABASE_USER=postgres
-      - DATABASE_PASSWORD=postgres
-      - DATABASE_HOST=db
-      - DATABASE_PORT=5432
-      - STATIC_ROOT=/app/static_root
-      - MEDIA_ROOT=/app/media_root
+      - DEBUG=${DEBUG}
+      - SECRET_KEY=${SECRET_KEY}
+      - ALLOWED_HOSTS=${ALLOWED_HOSTS}
+      - CSRF_TRUSTED_ORIGINS=${CSRF_TRUSTED_ORIGINS}
+      - DATABASE_ENGINE=${DATABASE_ENGINE}
+      - DATABASE_NAME=${DATABASE_NAME}
+      - DATABASE_USER=${DATABASE_USER}
+      - DATABASE_PASSWORD=${DATABASE_PASSWORD}
+      - DATABASE_HOST=${DATABASE_HOST}
+      - DATABASE_PORT=${DATABASE_PORT}
+      - STATIC_ROOT=${STATIC_ROOT}
+      - MEDIA_ROOT=${MEDIA_ROOT}
     depends_on:
       - db
 
@@ -38,20 +41,19 @@ services:
     command: sh -c "npm install && npm run dev"
 
   nginx:
-    image: nginx:stable-alpine
+    build:
+      context: ./nginx
+      dockerfile: Dockerfile
     ports:
       - "80:80"
+      - "443:443"
     volumes:
       - ./nginx/templates:/etc/nginx/templates
-      # En desarrollo, montamos los estáticos generados por Django/Tailwind
-      # Nota: Si uvicorn sirve estáticos en DEBUG, nginx podría no necesitarlos para /static/
-      # pero si nginx sirve /static/, necesita acceso a ellos.
-      # Mapeamos la carpeta donde Tailwind escribe el CSS y Django sus assets.
-      - ./core/static:/app/static_root/core
+      - ./nginx/ssl:/etc/nginx/ssl
+      - static_volume:/app/static_root:ro
+      - media_volume:/app/media_root:ro
     environment:
-      # Reemplaza esto con la URL base de tu servidor Vmix. 
-      # Ejemplo: http://192.168.1.50:8888
-      - VMIX_HOST=${VMIX_HOST:-http://vmix_placeholder:8888} 
+      - VMIX_HOST=${VMIX_HOST}
     depends_on:
       - web
 
